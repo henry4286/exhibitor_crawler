@@ -1,0 +1,542 @@
+"""
+配置文件图形化编辑器主模块
+
+提供配置文件的主要编辑功能
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+import json
+import os
+import pandas as pd
+import traceback
+from typing import Optional, Dict, Any, List
+
+from .basic_config_tab import BasicConfigTab
+from .advanced_config_tab import AdvancedConfigTab
+from .run_config_tab import RunConfigTab
+
+
+class ConfigUIEditor:
+    """配置文件图形化编辑器"""
+    
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("爬虫配置文件编辑器")
+        self.root.geometry("1200x800")
+        
+        # 配置文件路径
+        self.config_path = 'config.xlsx'
+        
+        # 数据存储
+        self.df = None
+        self.current_row = None
+        
+        # 初始化界面
+        self.setup_ui()
+        self.load_config()
+        
+        # 绑定窗口关闭事件
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def setup_ui(self):
+        """设置用户界面"""
+        # 创建主框架
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # 配置网格权重
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(1, weight=1)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="爬虫配置文件编辑器", font=('Arial', 16, 'bold'))
+        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 10))
+        
+        # 左侧：配置列表
+        left_frame = ttk.LabelFrame(main_frame, text="配置列表", padding="5")
+        left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        
+        # 搜索框
+        search_frame = ttk.Frame(left_frame)
+        search_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 5))
+        ttk.Label(search_frame, text="搜索:").pack(side=tk.LEFT)
+        self.search_var = tk.StringVar()
+        self.search_var.trace('w', self.on_search_change)
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=20)
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        ttk.Button(search_frame, text="清除", command=self.clear_search, width=5).pack(side=tk.LEFT, padx=(5, 0))
+        
+        # 列表框
+        self.listbox = tk.Listbox(left_frame, width=25)
+        self.listbox.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+        self.listbox.bind('<<ListboxSelect>>', self.on_list_select)
+        
+        # 列表滚动条
+        listbox_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.listbox.yview)
+        listbox_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        self.listbox.configure(yscrollcommand=listbox_scrollbar.set)
+        
+        # 按钮框架
+        button_frame = ttk.Frame(left_frame)
+        button_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(5, 0))
+        
+        ttk.Button(button_frame, text="新增", command=self.add_config).grid(row=0, column=0, padx=2)
+        ttk.Button(button_frame, text="复制", command=self.copy_config).grid(row=0, column=1, padx=2)
+        ttk.Button(button_frame, text="删除", command=self.delete_config).grid(row=0, column=2, padx=2)
+        ttk.Button(button_frame, text="保存", command=self.save_config).grid(row=0, column=3, padx=2)
+        ttk.Button(button_frame, text="刷新", command=self.load_config).grid(row=0, column=4, padx=2)
+        
+        # 配置左侧框架权重
+        left_frame.columnconfigure(0, weight=1)
+        left_frame.rowconfigure(1, weight=1)
+        
+        # 存储过滤后的索引映射
+        self.filtered_indices = []
+        
+        # 右侧：配置详情
+        right_frame = ttk.Frame(main_frame)
+        right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_frame.columnconfigure(0, weight=1)
+        
+        # 创建Notebook用于分页
+        self.notebook = ttk.Notebook(right_frame)
+        self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # 创建各个标签页
+        self.basic_tab = BasicConfigTab(self.notebook)
+        self.advanced_tab = AdvancedConfigTab(self.notebook)
+        self.run_tab = RunConfigTab(self.notebook, self)
+        
+        # 获取字段字典
+        self.basic_fields = self.basic_tab.get_fields()
+        self.advanced_fields = self.advanced_tab.get_fields()
+        
+        # 右侧框架权重
+        right_frame.rowconfigure(0, weight=1)
+    
+    def on_search_change(self, *args):
+        """搜索框内容变化时触发"""
+        self.update_listbox()
+    
+    def clear_search(self):
+        """清除搜索框"""
+        self.search_var.set('')
+    
+    def update_listbox(self, search_text: str = None):
+        """更新列表框显示，支持搜索过滤"""
+        if search_text is None:
+            search_text = self.search_var.get().strip().lower()
+        
+        self.listbox.delete(0, tk.END)
+        self.filtered_indices = []
+        
+        if self.df is None or len(self.df) == 0:
+            return
+        
+        for idx, row in self.df.iterrows():
+            # 获取搜索字段
+            exhibition_code = str(row.get('exhibition_code', '')).lower()
+            miniprogram_name = str(row.get('miniprogram_name', '')).lower()
+            url = str(row.get('url', '')).lower()
+            
+            # 如果搜索文本为空，显示所有；否则匹配搜索条件
+            if not search_text or (search_text in exhibition_code or 
+                                    search_text in miniprogram_name or 
+                                    search_text in url):
+                display_text = f"{row['exhibition_code']} ({row.get('request_mode', 'single')})"
+                self.listbox.insert(tk.END, display_text)
+                self.filtered_indices.append(idx)
+    
+    def load_config(self):
+        """加载配置文件"""
+        try:
+            print(f"正在加载配置文件: {self.config_path}")
+            if not os.path.exists(self.config_path):
+                error_msg = f"配置文件不存在: {self.config_path}"
+                print(f"错误: {error_msg}")
+                messagebox.showerror("错误", error_msg)
+                return
+            
+            self.df = pd.read_excel(self.config_path)
+            print(f"成功加载配置文件，数据行数: {len(self.df)}")
+            
+            # 更新列表框（应用当前搜索条件）
+            self.update_listbox()
+            
+            # 清空输入框
+            self.clear_fields()
+            
+            config_count = len(self.df) if self.df is not None else 0
+            success_msg = f"已加载配置文件，共 {config_count} 个配置"
+            print(f"信息: {success_msg}")
+            self.show_info(success_msg)
+            
+        except Exception as e:
+            error_msg = f"加载配置文件失败: {e}"
+            print(f"错误: {error_msg}")
+            traceback.print_exc()
+            messagebox.showerror("错误", error_msg)
+            self.df = None
+    
+    def clear_fields(self):
+        """清空所有输入框"""
+        # 清空基本配置字段
+        for field, widget in self.basic_fields.items():
+            self._clear_widget(widget)
+        
+        # 清空二次请求配置字段
+        for field, widget in self.advanced_fields.items():
+            self._clear_widget(widget)
+        
+        self.current_row = None
+    
+    def _clear_widget(self, widget):
+        """清空单个控件"""
+        try:
+            if hasattr(widget, 'set_json_string'):  # JSONEditor
+                widget.set_json_string('')
+            elif isinstance(widget, tk.Text) or hasattr(widget, 'tag_add'):  # Text widget
+                widget.delete('1.0', tk.END)
+            elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):  # Entry widget
+                widget.delete(0, tk.END)
+            elif hasattr(widget, 'set'):  # Combobox or other settable widget
+                widget.set('')
+        except Exception as e:
+            # 忽略清空控件时的错误，避免程序崩溃
+            print(f"清空控件时发生错误: {e}")
+    
+    def on_list_select(self, event):
+        """列表选择事件处理"""
+        selection = self.listbox.curselection()
+        if not selection:
+            return
+        
+        listbox_index = selection[0]
+        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+            return
+        
+        # 使用过滤后的索引映射获取实际数据框索引
+        actual_index = self.filtered_indices[listbox_index]
+        if self.df is None or actual_index >= len(self.df):
+            return
+        
+        row = self.df.iloc[actual_index]
+        self.current_row = actual_index
+        
+        # 填充基本配置字段
+        self._fill_fields(self.basic_fields, row)
+        
+        # 填充二次请求配置字段
+        self._fill_fields(self.advanced_fields, row)
+        
+        # 更新运行配置页面的当前展会信息
+        self.run_tab.update_current_exhibition()
+    
+    def _fill_fields(self, fields_dict, row):
+        """填充字段数据"""
+        for field, widget in fields_dict.items():
+            value = row.get(field, '')
+            self._set_widget_value(widget, value)
+    
+    def _set_widget_value(self, widget, value):
+        """设置控件的值"""
+        try:
+            if hasattr(widget, 'set_json_string'):  # JSONEditor
+                widget.set_json_string(str(value) if pd.notna(value) else '')
+            elif isinstance(widget, tk.Text) or hasattr(widget, 'tag_add'):  # Text widget
+                widget.delete('1.0', tk.END)
+                widget.insert('1.0', str(value) if pd.notna(value) else '')
+            elif isinstance(widget, ttk.Combobox):  # Combobox - 必须在Entry之前检查，因为Combobox也有delete和insert
+                # 处理下拉框控件
+                values = widget.cget('values')
+                value_str = str(value).strip() if pd.notna(value) and value != '' else ''
+                
+                # 如果值有效且在选项列表中，设置该值
+                if value_str and value_str in values:
+                    widget.set(value_str)
+                elif values:  # 如果值为空或不在选项列表中，设置第一个为默认值
+                    widget.set(values[0])
+                else:
+                    widget.set('')
+            elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):  # Entry widget
+                widget.delete(0, tk.END)
+                widget.insert(0, str(value) if pd.notna(value) else '')
+            elif hasattr(widget, 'set'):  # Other settable widget
+                widget.set(str(value) if pd.notna(value) else '')
+        except Exception as e:
+            # 忽略设置控件值时的错误，避免程序崩溃
+            print(f"设置控件值时发生错误: {e}, widget类型: {type(widget).__name__}, 值: {value}")
+    
+    def get_field_value(self, widget):
+        """获取字段值"""
+        try:
+            if hasattr(widget, 'get_json_string'):  # JSONEditor
+                value = widget.get_json_string()
+                if not value.strip():
+                    # JSON字段如果为空，返回空的JSON对象
+                    return '{}'
+                return value
+            elif isinstance(widget, tk.Text) or hasattr(widget, 'tag_add'):  # Text widget
+                value = widget.get('1.0', tk.END).strip()
+                return value if value.strip() else None
+            elif hasattr(widget, 'get'):  # Entry, Combobox, etc.
+                value = widget.get()
+                return value if value.strip() else None
+            else:
+                return None
+        except Exception as e:
+            # 忽略获取控件值时的错误，返回None
+            print(f"获取控件值时发生错误: {e}")
+            return None
+    
+    def validate_json(self, json_str):
+        """验证JSON格式"""
+        if not json_str.strip():
+            return True, ""
+        
+        try:
+            json.loads(json_str)
+            return True, ""
+        except json.JSONDecodeError as e:
+            return False, str(e)
+    
+    def validate_config(self):
+        """验证配置"""
+        # 获取展会代码
+        exhibition_code = self.get_field_value(self.basic_fields['exhibition_code'])
+        if not exhibition_code:
+            return False, "展会代码不能为空"
+        
+        # 检查展会代码是否重复（新增时）
+        if self.current_row is None and self.df is not None:
+            if exhibition_code in self.df['exhibition_code'].values:
+                return False, f"展会代码 '{exhibition_code}' 已存在"
+        
+        # 获取URL
+        url = self.get_field_value(self.basic_fields['url'])
+        if not url:
+            return False, "API地址不能为空"
+        
+        # 验证JSON字段（排除items_key，因为它是字符串）
+        json_fields = ['headers', 'params', 'data', 'company_info_keys']
+        for field in json_fields:
+            value = self.get_field_value(self.basic_fields[field])
+            if value:
+                is_valid, error = self.validate_json(value)
+                if not is_valid:
+                    return False, f"字段 '{field}' 的JSON格式错误: {error}"
+        
+        # 如果是double模式，验证二次请求字段
+        request_mode = self.get_field_value(self.basic_fields['request_mode'])
+        if request_mode == 'double':
+            # 验证必需的二次请求字段
+            url_detail = self.get_field_value(self.advanced_fields['url_detail'])
+            if not url_detail:
+                return False, "二次请求模式下，详情API地址不能为空"
+            
+            company_name_key = self.get_field_value(self.advanced_fields['company_name_key'])
+            if not company_name_key:
+                return False, "二次请求模式下，公司名称字段不能为空"
+            
+            id_key = self.get_field_value(self.advanced_fields['id_key'])
+            if not id_key:
+                return False, "二次请求模式下，公司ID字段不能为空"
+            
+            # 验证二次请求的JSON字段
+            json_fields = ['headers_detail', 'params_detail', 'data_detail', 'info_key']
+            for field in json_fields:
+                value = self.get_field_value(self.advanced_fields[field])
+                if value:
+                    is_valid, error = self.validate_json(value)
+                    if not is_valid:
+                        return False, f"二次请求字段 '{field}' 的JSON格式错误: {error}"
+        
+        return True, ""
+    
+    def add_config(self):
+        """新增配置"""
+        # 清空输入框
+        self.clear_fields()
+        
+        # 设置默认值
+        self.basic_tab.set_default_values()
+        self.advanced_tab.set_default_values()
+        
+        # 设置当前行为None，表示新增
+        self.current_row = None
+        
+        self.show_info("请填写配置信息，然后点击保存")
+    
+    def copy_config(self):
+        """复制配置"""
+        selection = self.listbox.curselection()
+        if not selection:
+            self.show_warning("请先选择要复制的配置")
+            return
+        
+        listbox_index = selection[0]
+        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+            return
+        
+        actual_index = self.filtered_indices[listbox_index]
+        if self.df is None or actual_index >= len(self.df):
+            return
+        
+        # 获取选中的配置行
+        row = self.df.iloc[actual_index]
+        original_code = row['exhibition_code']
+        
+        # 填充所有字段（保持现有数据）
+        self._fill_fields(self.basic_fields, row)
+        self._fill_fields(self.advanced_fields, row)
+        
+        # 清空展会代码（需要用户重新输入新的展会代码）
+        exhibition_code_widget = self.basic_fields.get('exhibition_code')
+        if exhibition_code_widget:
+            self._clear_widget(exhibition_code_widget)
+            # 设置一个提示性的默认值
+            suggested_code = f"{original_code}_copy"
+            if hasattr(exhibition_code_widget, 'insert'):
+                exhibition_code_widget.insert(0, suggested_code)
+        
+        # 设置当前行为None，表示这是一个新增操作
+        self.current_row = None
+        
+        self.show_info(f"已复制展会 '{original_code}' 的配置，请修改展会代码后保存")
+    
+    def delete_config(self):
+        """删除配置"""
+        selection = self.listbox.curselection()
+        if not selection:
+            self.show_warning("请先选择要删除的配置")
+            return
+        
+        listbox_index = selection[0]
+        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+            return
+        
+        actual_index = self.filtered_indices[listbox_index]
+        if self.df is None or actual_index >= len(self.df):
+            return
+        
+        exhibition_code = self.df.iloc[actual_index]['exhibition_code']
+        
+        if self.ask_yesno("确认", f"确定要删除展会 '{exhibition_code}' 的配置吗？"):
+            self.df = self.df.drop(actual_index).reset_index(drop=True)
+            self.save_to_file()
+            self.load_config()
+            self.show_info(f"已删除展会 '{exhibition_code}' 的配置")
+    
+    def save_config(self):
+        """保存配置"""
+        # 验证配置
+        is_valid, error = self.validate_config()
+        if not is_valid:
+            self.show_error(f"验证失败: {error}")
+            return
+        
+        try:
+            # 收集基本配置数据
+            basic_data = {}
+            for field, widget in self.basic_fields.items():
+                basic_data[field] = self.get_field_value(widget)
+            
+            # 收集二次请求数据
+            advanced_data = {}
+            for field, widget in self.advanced_fields.items():
+                advanced_data[field] = self.get_field_value(widget)
+            
+            # 设置默认值
+            if not basic_data.get('request_mode'):
+                basic_data['request_mode'] = 'single'
+            if not basic_data.get('request_method'):
+                basic_data['request_method'] = 'POST'
+            
+            # 合并数据
+            config_data = {**basic_data, **advanced_data}
+            
+            if self.current_row is None:
+                # 新增配置
+                new_df = pd.DataFrame([config_data])
+                self.df = pd.concat([self.df, new_df], ignore_index=True)
+                self.show_info(f"已新增展会 '{config_data['exhibition_code']}' 的配置")
+            else:
+                # 更新配置 - 处理数据类型兼容性
+                if self.df is not None and self.current_row is not None:
+                    for field, value in config_data.items():
+                        if field in self.df.columns:
+                            # 如果值为None，保持原有的数据类型
+                            if value is None:
+                                # 检查原列的数据类型，如果是数值类型则设为NaN，否则设为None
+                                if pd.api.types.is_numeric_dtype(self.df[field]):
+                                    self.df.at[self.current_row, field] = pd.NA
+                                else:
+                                    self.df.at[self.current_row, field] = None
+                            else:
+                                # 确保数据类型兼容，特别是JSON字符串
+                                if pd.api.types.is_numeric_dtype(self.df[field]):
+                                    try:
+                                        # 尝试转换为数字，如果失败则保持原类型
+                                        self.df.at[self.current_row, field] = float(value) if '.' in str(value) else int(value)
+                                    except (ValueError, TypeError):
+                                        # 如果无法转换为数字，保持为字符串
+                                        self.df[field] = self.df[field].astype(object)
+                                        self.df.at[self.current_row, field] = str(value)
+                                else:
+                                    self.df.at[self.current_row, field] = value
+                        else:
+                            # 新字段，直接赋值
+                            self.df.at[self.current_row, field] = value
+                    self.show_info(f"已更新展会 '{config_data['exhibition_code']}' 的配置")
+            
+            # 保存到文件
+            self.save_to_file()
+            
+            # 重新加载配置
+            self.load_config()
+            
+            # 重新选择当前编辑的配置
+            if self.current_row is not None:
+                self.listbox.selection_set(self.current_row)
+                self.on_list_select(None)
+            
+        except Exception as e:
+            self.show_error(f"保存配置失败: {e}")
+    
+    def save_to_file(self):
+        """保存到Excel文件"""
+        if self.df is not None:
+            self.df.to_excel(self.config_path, index=False)
+    
+    def on_closing(self):
+        """窗口关闭事件处理"""
+        if self.ask_okcancel("退出", "确定要退出吗？请确保已保存所有更改。"):
+            self.root.destroy()
+    
+    # 消息框方法的简化版本（带控制台输出）
+    def show_info(self, message):
+        print(f"信息: {message}")
+        messagebox.showinfo("提示", message)
+    
+    def show_warning(self, message):
+        print(f"警告: {message}")
+        messagebox.showwarning("警告", message)
+    
+    def show_error(self, message):
+        print(f"错误: {message}")
+        messagebox.showerror("错误", message)
+    
+    def ask_yesno(self, title, message):
+        print(f"询问 ({title}): {message}")
+        return messagebox.askyesno(title, message)
+    
+    def ask_okcancel(self, title, message):
+        print(f"询问 ({title}): {message}")
+        return messagebox.askokcancel(title, message)
+    
+    def run(self):
+        """运行应用"""
+        self.root.mainloop()
