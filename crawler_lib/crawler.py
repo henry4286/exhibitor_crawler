@@ -6,6 +6,7 @@
 
 import threading
 import time
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
@@ -13,8 +14,14 @@ from .config_manager import ConfigManager, CrawlerConfig
 from .data_parser import DataParser
 from .excel_exporter import ExcelExporter
 from .http_client import HttpClient
-from .utils import write_status_file,get_nested_value
+from .utils import get_nested_value
 from typing import List, Dict, Any
+
+# 导入统一日志系统
+from unified_logger import (
+    console, log_request, log_error, log_info, log_warning, 
+    log_page_progress, log_list_progress, log_contacts_saved
+)
 
 class CompanyCrawler:
     """
@@ -106,8 +113,17 @@ class CompanyCrawler:
             method=self.config.request_method,
             headers=self.config.headers,
             params=request_params,
-            data=request_data if isinstance(request_data, dict) else None,
+            data=request_data,
             context=f"列表页{page}"
+        )
+        
+        # 记录请求详细信息到日志文件
+        log_request(
+            url=url,
+            params=request_params,
+            data=request_data,
+            response=response_data,
+            method=f"{self.config.request_method}_单次请求"
         )
         
         # 提取公司列表
@@ -128,10 +144,6 @@ class CompanyCrawler:
         Returns:
             是否成功获取到数据
         """
-        print(f"使用顺序爬取模式", flush=True)
-        if self.start_page > 1:
-            print(f"📍 从第 {self.start_page} 页开始抓取", flush=True)
-        
         if self.config is None:
             return False
         
@@ -144,15 +156,12 @@ class CompanyCrawler:
         
         while True:
             try:
-                print(f"正在下载第{page}页的数据", flush=True)
-                write_status_file("python_excute_status.txt", f"正在下载第{page}页的数据")
-                
                 company_list, success = self.crawl_page(page)
                 
                 if company_list:
                     # 检查是否与前一页数据完全相同（避免无翻页API的死循环）
                     if previous_data is not None and self._is_same_data(previous_data, company_list):
-                        print(f"⚠️  第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取", flush=True)
+                        log_error(f"第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取")
                         break
                     
                     # 有数据，保存并继续
@@ -161,7 +170,9 @@ class CompanyCrawler:
                     consecutive_empty = 0
                     self._total_companies += len(company_list)
                     self._total_pages += 1
-                    print(f"第{page}页完成，获取到{len(company_list)}条数据", flush=True)
+                    
+                    # 记录进度（控制台显示）
+                    log_info(f"第{page}页完成，获取到{len(company_list)}条数据")
                     
                     # 保存当前页数据用于下次比较
                     previous_data = company_list
@@ -169,18 +180,14 @@ class CompanyCrawler:
                 else:
                     # 空数据
                     consecutive_empty += 1
-                    print(f"第{page}页无数据（连续空页: {consecutive_empty}/{max_consecutive_empty}）", flush=True)
-                    
                     if consecutive_empty >= max_consecutive_empty:
-                        print(f"连续{max_consecutive_empty}页无数据，停止爬取", flush=True)
+                        log_error(f"连续{max_consecutive_empty}页无数据，停止爬取")
                         break
                     
                     page += 1
                     
             except Exception as e:
-                error_msg = f"{self.exhibition_code}第{page}页数据下载失败: {e}"
-                print(error_msg, flush=True)
-                write_status_file("errorlog.txt", error_msg)
+                log_error(f"第{page}页数据下载失败", e)
                 
                 consecutive_empty += 1
                 if consecutive_empty >= max_consecutive_empty:
@@ -243,10 +250,6 @@ class CompanyCrawler:
         Returns:
             是否成功获取到数据
         """
-        print(f"使用并行爬取模式，线程数: {self.max_workers}", flush=True)
-        if self.start_page > 1:
-            print(f"📍 从第 {self.start_page} 页开始抓取", flush=True)
-        
         if self.config is None:
             return False
         
@@ -260,7 +263,6 @@ class CompanyCrawler:
         
         while True:
             batch_end = current_batch_start + batch_size - 1
-            print(f"\n开始爬取第 {current_batch_start}-{batch_end} 页", flush=True)
             
             # 使用线程池爬取当前批次
             batch_results = {}
@@ -288,18 +290,11 @@ class CompanyCrawler:
                                 self._total_companies += len(company_list)
                                 self._total_pages += 1
                             
-                            print(f"第{page}页完成，获取到{len(company_list)}条数据", flush=True)
-                        else:
-                            print(f"第{page}页无数据", flush=True)
-                        
-                        # 更新状态
-                        write_status_file("python_excute_status.txt", 
-                                        f"已完成第{page}页，共获取{self._total_companies}条数据")
+                            # 记录进度（控制台显示）
+                            log_page_progress(page, len(company_list))
                         
                     except Exception as e:
-                        error_msg = f"处理第{page}页时发生错误: {e}"
-                        print(error_msg, flush=True)
-                        write_status_file("errorlog.txt", error_msg)
+                        log_error(f"处理第{page}页时发生错误", e)
                         batch_results[page] = []
             
             # 分析批次结果，决定是否继续
@@ -313,16 +308,14 @@ class CompanyCrawler:
                 else:
                     break
             
-            print(f"批次完成，最后连续空页数: {consecutive_empty_count}", flush=True)
-            
             # 如果连续空页数达到阈值，停止爬取
             if consecutive_empty_count >= max_consecutive_empty:
-                print(f"检测到连续{consecutive_empty_count}页无数据，停止爬取", flush=True)
+                log_error(f"检测到连续{consecutive_empty_count}页无数据，停止爬取")
                 break
             
             # 如果整批都是空的，也停止
             if all(not batch_results[p] for p in sorted_pages):
-                print("整批数据都为空，停止爬取", flush=True)
+                log_error("整批数据都为空，停止爬取")
                 break
             
             # 检测批次中是否有重复数据（无翻页API检测）
@@ -332,7 +325,7 @@ class CompanyCrawler:
                 second_page = sorted_pages[1]
                 if (batch_results[first_page] and batch_results[second_page] and 
                     self._is_same_data(batch_results[first_page], batch_results[second_page])):
-                    print(f"⚠️  检测到第{first_page}页和第{second_page}页数据相同，疑似无翻页API，停止爬取", flush=True)
+                    log_error(f"检测到第{first_page}页和第{second_page}页数据相同，疑似无翻页API，停止爬取")
                     break
             
             # 继续下一批
@@ -353,6 +346,15 @@ class CompanyCrawler:
         try:
             start_time = time.time()
             
+            # 如果从第一页开始，删除旧的数据文件
+            if self.start_page == 1:
+                old_file_path = self.exporter.get_file_path(self.exhibition_code)
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                    except Exception as e:
+                        log_error(f"删除旧文件失败", e)
+            
             # 清空统计信息
             self._total_companies = 0
             self._total_pages = 0
@@ -363,28 +365,10 @@ class CompanyCrawler:
             else:
                 has_data = self.crawl_sequential()
             
-            # 计算耗时
-            elapsed_time = time.time() - start_time
-            
-            # 输出统计信息
-            print(f"\n{'='*50}", flush=True)
-            print(f"爬取完成！", flush=True)
-            print(f"成功页数: {self._total_pages}", flush=True)
-            print(f"总数据量: {self._total_companies} 条", flush=True)
-            print(f"耗时: {elapsed_time:.2f} 秒", flush=True)
-            print(f"{'='*50}\n", flush=True)
-            
-            # 更新最终状态
-            status = "完成" if has_data else "失败"
-            write_status_file("python_excute_status.txt", status)
-            
             return has_data
             
         except Exception as e:
-            error_msg = f"爬取过程中发生错误: {e}"
-            print(error_msg, flush=True)
-            write_status_file("errorlog.txt", error_msg)
-            write_status_file("python_excute_status.txt", "失败")
+            log_error("爬取过程中发生错误", e)
             return False
 
 
@@ -456,12 +440,99 @@ class DoubleFetchCrawler:
             method=self.config.request_method,
             headers=self.config.headers,
             params=request_params,
-            data=request_data if isinstance(request_data, dict) else None,
+            data=request_data,
             context=f"列表页{page}"
         )
         
+        # 记录请求详细信息到日志文件
+        log_request(
+            url=url,
+            method=self.config.request_method,
+            params=request_params,
+            data=request_data,
+            response=response_data
+        )
+        
         items = self.data_parser.extract_items(response_data, self.config.items_key)
+        
+        # 记录列表获取进度（控制台显示）
+        log_list_progress(page, len(items) if isinstance(items, list) else 0)
+        
         return items if isinstance(items, list) else []
+    
+    def _is_valid_contact(self, contact: Dict[str, Any]) -> bool:
+        """
+        检查联系人记录是否有效（除了公司名外至少有一个有效字段）
+        
+        Args:
+            contact: 联系人记录
+        
+        Returns:
+            True表示有效，False表示无效（只有公司名的空记录）
+        """
+        # 检查除company_name外的所有字段
+        for key, value in contact.items():
+            if key != 'company_name' and value and str(value).strip():
+                return True
+        return False
+    
+    def _remove_duplicate_companies(self, companies: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        去除公司列表中的重复记录
+        
+        Args:
+            companies: 公司列表
+        
+        Returns:
+            去重后的公司列表
+        """
+        if not companies:
+            return companies
+        
+        seen = set()
+        unique_companies = []
+        
+        for company in companies:
+            # 创建唯一标识（基于所有字段的排序后的键值对）
+            key = tuple(sorted((k, str(v)) for k, v in company.items()))
+            if key not in seen:
+                seen.add(key)
+                unique_companies.append(company)
+        
+        return unique_companies
+    
+    def _remove_duplicates_and_invalid(self, contacts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        去除重复记录和无效记录
+        
+        Args:
+            contacts: 联系人列表
+        
+        Returns:
+            去重后的联系人列表
+        """
+        if not contacts:
+            return contacts
+        
+        # 去重：基于所有字段内容创建唯一键
+        seen = set()
+        unique_contacts = []
+        
+        for contact in contacts:
+            # 创建唯一标识（基于所有字段的排序后的键值对）
+            key = tuple(sorted((k, str(v).strip()) for k, v in contact.items()))
+            if key not in seen:
+                seen.add(key)
+                unique_contacts.append(contact)
+        
+        # 过滤无效记录（只有公司名没有有效联系方式的记录）
+        valid_contacts = [
+            contact for contact in unique_contacts 
+            if self._is_valid_contact(contact)
+        ]
+        
+        # 如果过滤后还有有效数据，返回过滤后的；否则返回去重后的数据（保留空记录作为备用）
+        return valid_contacts if valid_contacts else unique_contacts
     
     def crawl(self) -> bool:
         """
@@ -470,98 +541,83 @@ class DoubleFetchCrawler:
         每获取一页公司列表，就立即抓取联系人并保存，避免数据丢失
         """
         if self.config is None:
-            print("❌ 配置未加载", flush=True)
+            log_error("配置未加载")
             return False
-            
-        print(f"🚀 开始二次请求爬取（逐页处理模式）", flush=True)
-        print(f"   - 并发线程数: {self.max_workers}", flush=True)
-        print(f"   - 策略: 一页一页处理，立即保存", flush=True)
-        if self.start_page > 1:
-            print(f"📍 从第 {self.start_page} 页开始抓取", flush=True)
         
         page = self.start_page
         has_data = False
         consecutive_empty = 0
         previous_companies = None  # 用于检测重复数据
         
-        # 确定表头
+        # 确定表头 - 基本配置的字段映射 + 联系人字段映射
         if self.config.info_key:
-            headers = ["company_name"] + list(self.config.info_key.keys())
+            # 对于二次请求模式，保存基本配置的字段映射 + 联系人字段映射
+            headers = list(self.config.company_info_keys.keys()) + list(self.config.info_key.keys())
         else:
             headers = list(self.config.company_info_keys.keys())
         
         try:
+            # 如果从第一页开始，删除旧的数据文件
+            if self.start_page == 1:
+                old_file_path = self.exporter.get_file_path(self.exhibition_code)
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                    except Exception as e:
+                        log_error(f"删除旧文件失败", e)
+            
             while True:
-                print(f"\n{'='*60}", flush=True)
-                print(f"📄 第{page}页 - 步骤1: 获取公司列表", flush=True)
-                print(f"{'='*60}", flush=True)
-                
                 # 步骤1: 获取这一页的公司列表
                 companies = self.crawl_page(page)
                 
                 if not companies:
                     consecutive_empty += 1
-                    print(f"⚠️  第{page}页无数据（连续空页: {consecutive_empty}/3）", flush=True)
                     if consecutive_empty >= 3:
-                        print("✋ 连续3页无数据，停止爬取", flush=True)
+                        log_error("连续3页无数据，停止爬取")
                         break
                     page += 1
                     continue
                 
                 # 检查是否与前一页数据完全相同（避免无翻页API的死循环）
                 if previous_companies is not None and self._is_same_companies(previous_companies, companies):
-                    print(f"⚠️  第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取", flush=True)
+                    log_error(f"第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取")
                     break
                 
                 consecutive_empty = 0
-                print(f"✅ 获取到 {len(companies)} 个公司", flush=True)
+                
+                # 在提交任务前先去重公司列表（API自身可能返回重复数据）
+                unique_companies = self._remove_duplicate_companies(companies)
                 
                 # 步骤2: 立即抓取这一页公司的联系人
-                print(f"\n📞 第{page}页 - 步骤2: 抓取 {len(companies)} 个公司的联系人（{self.max_workers}线程并发）", flush=True)
-                
                 # 使用DetailFetcher的fetch_batch_details方法（与test_config.py相同）
                 all_contacts = self.detail_fetcher.fetch_batch_details(
-                    companies, 
+                    unique_companies, 
                     fetch_contacts=True  # 获取联系人模式
                 )
                 
                 # 步骤3: 立即保存这一页的联系人数据
                 if all_contacts:
-                    print(f"\n💾 第{page}页 - 步骤3: 保存 {len(all_contacts)} 条联系人到Excel", flush=True)
-                    self.exporter.save(all_contacts, self.exhibition_code, headers)
-                    self._total_contacts += len(all_contacts)
+                    # 去重和过滤无效记录
+                    unique_contacts = self._remove_duplicates_and_invalid(all_contacts)
+                    
+                    self.exporter.save(unique_contacts, self.exhibition_code, headers)
+                    self._total_contacts += len(unique_contacts)
                     has_data = True
-                    print(f"✅ 第{page}页数据已安全保存！", flush=True)
-                else:
-                    print(f"⚠️  第{page}页未获取到联系人数据", flush=True)
+                    
+                    # 记录联系人保存进度（控制台显示）
+                    log_contacts_saved(page, len(unique_contacts))
                 
                 # 更新统计
                 self._total_companies += len(companies)
                 previous_companies = companies  # 保存当前页数据用于下次比较
                 
-                # 输出当前进度
-                print(f"\n📊 累计进度: 已处理 {self._total_companies} 个公司，获取 {self._total_contacts} 条联系人", flush=True)
-                
                 # 继续下一页（无延迟，速度优先）
                 page += 1
                 
         except KeyboardInterrupt:
-            print(f"\n⚠️  用户中断，已保存的数据不会丢失", flush=True)
+            log_error("用户中断，已保存的数据不会丢失")
         except Exception as e:
-            print(f"\n❌ 爬取过程出错: {e}", flush=True)
-            import traceback
-            traceback.print_exc()
-            print(f"⚠️  已保存的数据不会丢失", flush=True)
-        
-        # 最终统计
-        print(f"\n{'='*60}", flush=True)
-        print(f"🎉 爬取完成！", flush=True)
-        print(f"{'='*60}", flush=True)
-        print(f"总页数: {page - self.start_page}", flush=True)
-        print(f"总公司数: {self._total_companies}", flush=True)
-        print(f"总联系人: {self._total_contacts}", flush=True)
-        print(f"数据文件: ExhibitorList/{self.exhibition_code}.xlsx", flush=True)
-        print(f"{'='*60}\n", flush=True)
+            log_error("爬取过程出错", e)
         
         return has_data
     
@@ -582,21 +638,8 @@ class DoubleFetchCrawler:
         if len(companies1) == 0:
             return True
         
-        # 比较第一个公司的ID或名称
-        id_key = self.config.id_key or "id"
-        name_key = self.config.company_name_key or "name"
-        
-        first1_id = get_nested_value(companies1[0], id_key)
-        first2_id = get_nested_value(companies2[0], id_key)
-        
-        if first1_id and first2_id and first1_id == first2_id:
-            # 如果有多个公司，也比较最后一个
-            if len(companies1) > 1:
-                last1_id = get_nested_value(companies1[-1], id_key)
-                last2_id = get_nested_value(companies2[-1], id_key)
-                if last1_id and last2_id and last1_id == last2_id:
-                    return True
-            else:
-                return True
+        # 比较第一个公司
+        if companies1[0]== companies2[0]:
+            return True
         
         return False

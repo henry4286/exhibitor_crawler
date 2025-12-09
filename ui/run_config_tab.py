@@ -156,6 +156,11 @@ class RunConfigTab:
                                            f"起始页码: {start_page}"):
             return
         
+        # 清空日志并初始化
+        self.clear_log()
+        self.log_message(f"正在初始化爬虫运行...")
+        self.log_message(f"目标展会: {exhibition_code}")
+        
         # 启动爬虫
         self.is_running = True
         self.log_message(f"开始运行爬虫: {exhibition_code}")
@@ -264,6 +269,11 @@ class RunConfigTab:
         if not self.config_editor.ask_yesno("确认测试", 
                                            f"确定要测试展会 '{exhibition_code}' 的配置吗？"):
             return
+        
+        # 清空日志并初始化
+        self.clear_log()
+        self.log_message(f"正在初始化配置测试...")
+        self.log_message(f"目标展会: {exhibition_code}")
         
         # 启动测试
         self.is_running = True

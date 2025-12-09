@@ -224,29 +224,12 @@ class ConfigTester:
             if page2_count > 0:
                 print(f"✅ 翻页功能正常：成功获取到第2页数据")
                 
-                # 检查数据是否重复（简单检查第一条数据）
+                # 检查数据是否重复（比较第一条数据）
                 if page1_items and page2_items:
-                    # 尝试找一个唯一标识字段来检查重复
-                    id_fields = ['id', 'exhibitorId', 'applyId', 'company_id', 'companyId']
-                    found_unique_id = False
-                    
-                    for id_field in id_fields:
-                        if id_field in page1_items[0] and id_field in page2_items[0]:
-                            page1_ids = {item.get(id_field) for item in page1_items[:5] if item.get(id_field)}
-                            page2_ids = {item.get(id_field) for item in page2_items[:5] if item.get(id_field)}
-                            
-                            if page1_ids & page2_ids:  # 有交集，说明可能重复
-                                print(f"⚠️  警告：发现重复数据（ID字段: {id_field}）")
-                                print(f"   第1页前5条ID: {list(page1_ids)}")
-                                print(f"   第2页前5条ID: {list(page2_ids)}")
-                            else:
-                                print(f"✅ 数据无重复（检查ID字段: {id_field}）")
-                            
-                            found_unique_id = True
-                            break
-                    
-                    if not found_unique_id:
-                        print(f"⚠️  无法检查数据重复性：未找到合适的ID字段")
+                    if page1_items[0] == page2_items[0]:
+                        print(f"⚠️  警告：第1页和第2页的第一条数据相同，可能存在翻页问题")
+                    else:
+                        print(f"✅ 数据无重复（第1页和第2页的第一条数据不相同）")
                 
                 return True
             else:
@@ -254,18 +237,21 @@ class ConfigTester:
                 print(f"   这可能是正常的（如果总共只有一页数据）")
                 print(f"   也可能是翻页参数配置有问题")
                 
-                # 尝试检查是否有翻页相关的配置参数
-                has_page_params = any(param for param in ['page', 'pageNum', 'currentPage', 'pageIndex'] 
-                                    if str(self.config.params or {}).lower().find(param.lower()) != -1)
+                # 检查是否有翻页相关的配置参数（检查url、params和data中是否包含{page}占位符）
+                url_str = str(self.config.url or "")
+                params_str = str(self.config.params or "")
+                data_str = str(self.config.data or "")
                 
-                if has_page_params:
-                    print(f"   检测到翻页参数配置，但第2页无数据，可能是：")
+                has_page_placeholder = "{page}" in url_str or "{page}" in params_str or "{page}" in data_str
+                
+                if has_page_placeholder:
+                    print(f"   检测到翻页占位符{{page}}配置，但第2页无数据，可能是：")
                     print(f"   1. 数据确实只有一页")
                     print(f"   2. 翻页参数名称或位置配置错误")
                     print(f"   3. API翻页逻辑有变化")
                     return False  # 有翻页配置但第2页无数据，可能有问题
                 else:
-                    print(f"   未检测到明确的翻页参数配置")
+                    print(f"   未检测到翻页占位符{{page}}配置")
                     return True  # 没有翻页配置，第2页无数据是正常的
             
         except Exception as e:
@@ -482,16 +468,6 @@ class ConfigTester:
         if self.config.request_mode == "double":
             print(f"  - 详情请求: {'✅ 成功' if detail_success else '❌ 失败'}")
         
-        if all_success:
-            print(f"\n✅ 所有测试通过！可以使用以下命令开始正式抓取:")
-            if self.config.request_mode == "double":
-                print(f"  python run_crawler.py {self.exhibition_code}")
-            else:
-                print(f"  python company_crawler_v2.py {self.exhibition_code}")
-        else:
-            print(f"\n⚠️  存在失败的测试，请先修复配置或检查API接口！")
-        
-        print(f"\n{'='*60}\n")
         
         return all_success
 

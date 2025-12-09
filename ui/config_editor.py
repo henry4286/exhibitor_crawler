@@ -16,6 +16,9 @@ from .basic_config_tab import BasicConfigTab
 from .advanced_config_tab import AdvancedConfigTab
 from .run_config_tab import RunConfigTab
 
+# 导入新的日志系统
+from unified_logger import log_info, log_warning, log_error, log_exception, log_config_error, log_file_operation
+
 
 class ConfigUIEditor:
     """配置文件图形化编辑器"""
@@ -43,7 +46,7 @@ class ConfigUIEditor:
         """设置用户界面"""
         # 创建主框架
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid(row=0, column=0, sticky="wens")
         
         # 配置网格权重
         self.root.columnconfigure(0, weight=1)
@@ -57,11 +60,11 @@ class ConfigUIEditor:
         
         # 左侧：配置列表
         left_frame = ttk.LabelFrame(main_frame, text="配置列表", padding="5")
-        left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        left_frame.grid(row=1, column=0, sticky="wens", padx=(0, 5))
         
         # 搜索框
         search_frame = ttk.Frame(left_frame)
-        search_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 5))
+        search_frame.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 5))
         ttk.Label(search_frame, text="搜索:").pack(side=tk.LEFT)
         self.search_var = tk.StringVar()
         self.search_var.trace('w', self.on_search_change)
@@ -71,17 +74,17 @@ class ConfigUIEditor:
         
         # 列表框
         self.listbox = tk.Listbox(left_frame, width=25)
-        self.listbox.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+        self.listbox.grid(row=1, column=0, sticky="wens", pady=(0, 5))
         self.listbox.bind('<<ListboxSelect>>', self.on_list_select)
         
         # 列表滚动条
         listbox_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.listbox.yview)
-        listbox_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        listbox_scrollbar.grid(row=1, column=1, sticky="ns")
         self.listbox.configure(yscrollcommand=listbox_scrollbar.set)
         
         # 按钮框架
         button_frame = ttk.Frame(left_frame)
-        button_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(5, 0))
+        button_frame.grid(row=2, column=0, columnspan=2, sticky="we", pady=(5, 0))
         
         ttk.Button(button_frame, text="新增", command=self.add_config).grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="复制", command=self.copy_config).grid(row=0, column=1, padx=2)
@@ -98,12 +101,12 @@ class ConfigUIEditor:
         
         # 右侧：配置详情
         right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_frame.grid(row=1, column=1, sticky="wens")
         right_frame.columnconfigure(0, weight=1)
         
         # 创建Notebook用于分页
         self.notebook = ttk.Notebook(right_frame)
-        self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.notebook.grid(row=0, column=0, sticky="wens")
         
         # 创建各个标签页
         self.basic_tab = BasicConfigTab(self.notebook)
@@ -153,15 +156,15 @@ class ConfigUIEditor:
     def load_config(self):
         """加载配置文件"""
         try:
-            print(f"正在加载配置文件: {self.config_path}")
+            log_info(f"正在加载配置文件: {self.config_path}")
             if not os.path.exists(self.config_path):
                 error_msg = f"配置文件不存在: {self.config_path}"
-                print(f"错误: {error_msg}")
+                log_config_error(self.config_path, error_msg)
                 messagebox.showerror("错误", error_msg)
                 return
             
             self.df = pd.read_excel(self.config_path)
-            print(f"成功加载配置文件，数据行数: {len(self.df)}")
+            log_info(f"成功加载配置文件，数据行数: {len(self.df)}")
             
             # 更新列表框（应用当前搜索条件）
             self.update_listbox()
@@ -171,13 +174,13 @@ class ConfigUIEditor:
             
             config_count = len(self.df) if self.df is not None else 0
             success_msg = f"已加载配置文件，共 {config_count} 个配置"
-            print(f"信息: {success_msg}")
-            self.show_info(success_msg)
+            log_info(success_msg)
+            # 去掉弹窗提示，只在日志中记录
+            # self.show_info(success_msg)
             
         except Exception as e:
             error_msg = f"加载配置文件失败: {e}"
-            print(f"错误: {error_msg}")
-            traceback.print_exc()
+            log_exception(error_msg, exc_info=True)
             messagebox.showerror("错误", error_msg)
             self.df = None
     
@@ -206,7 +209,7 @@ class ConfigUIEditor:
                 widget.set('')
         except Exception as e:
             # 忽略清空控件时的错误，避免程序崩溃
-            print(f"清空控件时发生错误: {e}")
+            log_warning(f"清空控件时发生错误: {e}")
     
     def on_list_select(self, event):
         """列表选择事件处理"""
@@ -268,7 +271,7 @@ class ConfigUIEditor:
                 widget.set(str(value) if pd.notna(value) else '')
         except Exception as e:
             # 忽略设置控件值时的错误，避免程序崩溃
-            print(f"设置控件值时发生错误: {e}, widget类型: {type(widget).__name__}, 值: {value}")
+            log_warning(f"设置控件值时发生错误: {e}, widget类型: {type(widget).__name__}, 值: {value}")
     
     def get_field_value(self, widget):
         """获取字段值"""
@@ -289,7 +292,7 @@ class ConfigUIEditor:
                 return None
         except Exception as e:
             # 忽略获取控件值时的错误，返回None
-            print(f"获取控件值时发生错误: {e}")
+            log_warning(f"获取控件值时发生错误: {e}")
             return None
     
     def validate_json(self, json_str):
@@ -337,13 +340,20 @@ class ConfigUIEditor:
             if not url_detail:
                 return False, "二次请求模式下，详情API地址不能为空"
             
-            company_name_key = self.get_field_value(self.advanced_fields['company_name_key'])
-            if not company_name_key:
-                return False, "二次请求模式下，公司名称字段不能为空"
-            
-            id_key = self.get_field_value(self.advanced_fields['id_key'])
-            if not id_key:
-                return False, "二次请求模式下，公司ID字段不能为空"
+            # 验证基本配置中是否包含ID和Company字段映射
+            company_info_keys_value = self.get_field_value(self.basic_fields['company_info_keys'])
+            if company_info_keys_value:
+                try:
+                    import json
+                    company_info_keys = json.loads(company_info_keys_value)
+                    if 'ID' not in company_info_keys:
+                        return False, "二次请求模式下，基本配置的字段映射中必须包含'ID'字段"
+                    if 'Company' not in company_info_keys:
+                        return False, "二次请求模式下，基本配置的字段映射中必须包含'Company'字段"
+                except json.JSONDecodeError:
+                    return False, "基本配置的字段映射JSON格式错误"
+            else:
+                return False, "二次请求模式下，基本配置的字段映射不能为空"
             
             # 验证二次请求的JSON字段
             json_fields = ['headers_detail', 'params_detail', 'data_detail', 'info_key']
@@ -509,32 +519,48 @@ class ConfigUIEditor:
     def save_to_file(self):
         """保存到Excel文件"""
         if self.df is not None:
-            self.df.to_excel(self.config_path, index=False)
+            try:
+                self.df.to_excel(self.config_path, index=False)
+                log_file_operation("保存", self.config_path, success=True)
+            except Exception as e:
+                log_file_operation("保存", self.config_path, success=False, error=str(e))
+                raise
     
     def on_closing(self):
         """窗口关闭事件处理"""
-        if self.ask_okcancel("退出", "确定要退出吗？请确保已保存所有更改。"):
-            self.root.destroy()
+        if self.ask_okcancel("退出", "确定要退出吗？程序将询问是否同步配置到远程仓库。"):
+            try:
+                # 确保当前编辑的配置已保存
+                if self.current_row is not None:
+                    # 如果正在编辑某个配置，提示用户保存
+                    if self.ask_okcancel("保存更改", "检测到有未保存的更改，是否保存当前编辑的配置？"):
+                        self.save_config()
+                
+                log_info("用户关闭配置编辑器，程序退出时将询问是否同步配置")
+            except Exception as e:
+                log_exception(f"关闭窗口时发生错误: {e}", exc_info=True)
+            finally:
+                self.root.destroy()
     
-    # 消息框方法的简化版本（带控制台输出）
+    # 消息框方法的简化版本（带日志记录）
     def show_info(self, message):
-        print(f"信息: {message}")
+        log_info(f"信息: {message}")
         messagebox.showinfo("提示", message)
     
     def show_warning(self, message):
-        print(f"警告: {message}")
+        log_warning(f"警告: {message}")
         messagebox.showwarning("警告", message)
     
     def show_error(self, message):
-        print(f"错误: {message}")
+        log_error(f"错误: {message}")
         messagebox.showerror("错误", message)
     
     def ask_yesno(self, title, message):
-        print(f"询问 ({title}): {message}")
+        log_info(f"询问 ({title}): {message}")
         return messagebox.askyesno(title, message)
     
     def ask_okcancel(self, title, message):
-        print(f"询问 ({title}): {message}")
+        log_info(f"询问 ({title}): {message}")
         return messagebox.askokcancel(title, message)
     
     def run(self):

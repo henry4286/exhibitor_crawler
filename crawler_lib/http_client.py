@@ -4,6 +4,7 @@ HTTP请求客户端模块
 负责构建和发送HTTP请求，包含统一的重试机制
 """
 
+
 import ast
 import json
 import time
@@ -14,6 +15,15 @@ from urllib.parse import urlencode
 import requests
 
 from .config_manager import CrawlerConfig
+# 导入新的简化日志系统
+try:
+    from unified_logger import log_request, log_error
+except ImportError:
+    # 如果日志模块不可用，提供空函数
+    def log_request(*args, **kwargs):
+        pass
+    def log_error(*args, **kwargs):
+        pass
 
 
 # 限流检测关键词
@@ -22,7 +32,6 @@ RATE_LIMIT_KEYWORDS = [
     'rate limit', 'too many', 'forbidden', 'throttle', 
     'slow down', 'try again later'
 ]
-
 
 class HttpClient:
     """
@@ -173,7 +182,22 @@ class HttpClient:
             )
         
         response.raise_for_status()
-        return HttpClient.parse_response(response)
+        response_data = HttpClient.parse_response(response)
+        
+        # 记录请求日志（使用新的简化日志系统）
+        try:
+            log_request(
+                url=url,
+                params=request_params,
+                data=request_data if isinstance(request_data, dict) else None,
+                response=response_data,
+                method=config.request_method.upper()
+            )
+        except Exception as e:
+            # 请求日志记录失败不应该影响主要功能
+            pass
+        
+        return response_data
     
     @staticmethod
     def parse_response(response: requests.Response) -> dict:
@@ -269,57 +293,17 @@ class HttpClient:
         return min(base_delay + jitter, max_delay)
     
     @staticmethod
-    def is_rate_limited_response(response_data: Any) -> bool:
-        """
-        检测业务层是否返回限流响应
-        
-        检测以下情况：
-        1. success: false
-        2. code 不是 0/200
-        3. 消息包含限流关键词
-        
-        Args:
-            response_data: API响应数据
-        
-        Returns:
-            True表示被限流，False表示正常
-        """
-        if not isinstance(response_data, dict):
-            return False
-        
-        # 检查 success 字段
-        if 'success' in response_data:
-            if response_data['success'] is False or response_data['success'] == 'false':
-                return True
-        
-        # 检查 code 字段
-        if 'code' in response_data:
-            code = response_data['code']
-            if code not in [0, 200, '0', '200']:
-                return True
-        
-        # 检查消息是否包含限流关键词
-        for msg_key in ['message', 'msg', 'error_msg', 'errmsg', 'error']:
-            if msg_key in response_data:
-                msg = str(response_data[msg_key]).lower()
-                for keyword in RATE_LIMIT_KEYWORDS:
-                    if keyword.lower() in msg:
-                        return True
-        
-        return False
-    
-    @staticmethod
-    def is_rate_limit_error(error: Exception) -> bool:
+    def is_rate_limit(data: Any) -> bool:
         """
         检测异常是否为限流相关错误
         
         Args:
-            error: 捕获的异常
+            data: 待监测的数据
         
         Returns:
-            True表示是限流错误
+            True表示被限流，False表示正常
         """
-        error_str = str(error).lower()
+        error_str = str(data).lower()
         for keyword in RATE_LIMIT_KEYWORDS:
             if keyword.lower() in error_str:
                 return True
@@ -333,7 +317,9 @@ class HttpClient:
         params: Optional[Dict] = None,
         data: Optional[Dict] = None,
         timeout: int = 30,
-        context: str = ""
+        context: str = "",
+        validate_non_empty: bool = False,
+        items_key: Optional[str] = None
     ) -> Dict:
         """
         发送HTTP请求，带无限重试机制
@@ -342,6 +328,7 @@ class HttpClient:
         - 正常请求：无延迟
         - 限流/失败：指数退避重试，直到成功
         - 延迟序列: 3秒 → 9秒 → 27秒 → 81秒 → 243秒 → 600秒(封顶)
+        - **新增**：空数据检测与重试（用于联系人获取场景）
         
         Args:
             url: 请求URL
@@ -351,6 +338,8 @@ class HttpClient:
             data: POST数据（字典格式）
             timeout: 超时时间
             context: 上下文描述（用于日志输出）
+            validate_non_empty: 是否验证返回数据非空（用于联系人获取）
+            items_key: 数据项的键路径（用于提取数据列表）
         
         Returns:
             响应JSON数据（必定成功才返回）
@@ -385,9 +374,10 @@ class HttpClient:
                 response_data = HttpClient.parse_response(response)
                 
                 # 检测业务层限流
-                if HttpClient.is_rate_limited_response(response_data):
-                    raise Exception("业务层限流")
+                if HttpClient.is_rate_limit(response_data):
+                    raise Exception(response_data)
                 
+             
                 # 成功，如果之前有重试，打印恢复信息
                 if attempt > 1:
                     print(f"✅ {context} 第{attempt}次重试成功", flush=True)
@@ -395,13 +385,36 @@ class HttpClient:
                 return response_data
                 
             except Exception as e:
-                is_rate_limit = HttpClient.is_rate_limit_error(e) or "业务层限流" in str(e)
-                error_type = "限流" if is_rate_limit else "请求失败"
                 
+                is_rate_limit = HttpClient.is_rate_limit(e)
+                
+                if not is_rate_limit and not validate_non_empty:
+                    # 非限流且不验证空数据，直接抛出异常
+                    raise
+                
+            
                 wait_time = HttpClient.calculate_retry_delay(attempt)
                 
-                print(f"⚠️ {context} {error_type}，第{attempt}次重试，"
-                      f"等待{wait_time:.0f}秒... ({e})", flush=True)
+                # 控制台只显示简化的错误信息
+                error_msg = str(e)
+                if len(error_msg) > 100:
+                    error_msg = error_msg[:100] + "..."
+                
+                print(f"⚠️ {context} ，第{attempt}次重试，"
+                      f"等待{wait_time:.0f}秒... ({error_msg})", flush=True)
+                
+                # 将详细错误信息记录到日志文件
+                try:
+                    log_request(
+                        url=url,
+                        params=params,
+                        data=data,
+                        response={"error": str(e), "attempt": attempt},
+                        method=f"{method}_RETRY"
+                    )
+                except Exception:
+                    # 如果日志记录失败，忽略错误
+                    pass
                 
                 time.sleep(wait_time)
                 # 继续重试

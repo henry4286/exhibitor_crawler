@@ -8,7 +8,7 @@ from .config_manager import ConfigManager, CrawlerConfig
 from .excel_exporter import ExcelExporter
 from .http_client import HttpClient
 from .data_parser import DataParser
-from .utils import get_nested_value, write_status_file
+from .utils import get_nested_value
 from .crawler import CompanyCrawler , DoubleFetchCrawler
 
 __all__ = [
@@ -20,7 +20,6 @@ __all__ = [
     'CompanyCrawler',
     'DoubleFetchCrawler',
     'get_nested_value',
-    'write_status_file',
 ]
 
 __version__ = '2.0.0'

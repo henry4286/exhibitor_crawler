@@ -55,15 +55,13 @@ class AdvancedConfigTab:
         
         # 二次请求配置字段
         fields = [
-            ('url_detail', '详情API地址', '支持#company_id占位符'),
+            ('url_detail', '详情API地址', '支持动态占位符，如#id'),
             ('request_method_detail', '详情请求方法', 'GET/POST'),
             ('headers_detail', '详情请求头', 'JSON格式'),
             ('params_detail', '详情URL参数', 'JSON格式'),
             ('data_detail', '详情请求体', 'JSON格式'),
             ('items_key_detail', '详情数据路径', '例如: data.contacts'),
-            ('info_key', '联系人字段映射', 'JSON格式'),
-            ('company_name_key', '公司名称字段', '例如: companyName'),
-            ('id_key', '公司ID字段', '例如: id')
+            ('info_key', '联系人字段映射', 'JSON格式')
         ]
         
         for i, (field, label, hint) in enumerate(fields, start=1):

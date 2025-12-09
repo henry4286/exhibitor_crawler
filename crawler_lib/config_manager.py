@@ -35,8 +35,6 @@ class CrawlerConfig:
     data_detail: Optional[str] = None
     items_key_detail: Optional[str] = None
     info_key: Optional[dict] = None
-    company_name_key: Optional[str] = None
-    id_key: Optional[str] = None
 
 
 class ConfigManager:
@@ -107,8 +105,6 @@ class ConfigManager:
                 config.data_detail = row.get('data_detail')
                 config.items_key_detail = row.get('items_key_detail')
                 config.info_key = self._safe_json_load(row.get('info_key'))
-                config.company_name_key = row.get('company_name_key')
-                config.id_key = row.get('id_key')
             
             self._configs[exhibition_code] = config
     

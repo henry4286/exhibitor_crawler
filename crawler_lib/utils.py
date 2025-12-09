@@ -5,7 +5,57 @@
 """
 
 import time
-from typing import Any
+import re
+from typing import Any, Dict, Optional
+
+
+def replace_placeholders(template: str, data: Dict[str, Any], field_mapping: Optional[Dict[str, str]] = None) -> str:
+    """
+    动态替换字符串中的占位符 #key
+    
+    占位符格式: #key，其中 key 是第一次请求响应中的字段名
+    支持嵌套字段路径，如 #data.company.id
+    
+    Args:
+        template: 包含占位符的模板字符串
+        data: 第一次请求获取的数据（字典格式）
+        field_mapping: 字段映射配置（可选），用于扩展支持的占位符
+    
+    Returns:
+        替换后的字符串
+    
+    Examples:
+        >>> data = {"id": "123", "name": "公司A", "info": {"city": "北京"}}
+        >>> replace_placeholders("company/#id/detail", data)
+        'company/123/detail'
+        >>> replace_placeholders("city=#info.city", data)
+        'city=北京'
+    """
+    if not template or not isinstance(template, str):
+        return template
+    
+    # 查找所有占位符 #key
+    placeholder_pattern = r'#([a-zA-Z0-9._]+)'
+    placeholders = re.findall(placeholder_pattern, template)
+    
+    result = template
+    for placeholder in placeholders:
+        # 从数据中获取对应的值
+        value = get_nested_value(data, placeholder)
+        
+        # 如果从数据中获取不到，尝试从字段映射中查找
+        if (value == "" or value is None) and field_mapping:
+            # 尝试反向查找：如果placeholder是映射的输出key，找到对应的输入key
+            for output_key, input_key in field_mapping.items():
+                if output_key == placeholder:
+                    value = get_nested_value(data, input_key)
+                    break
+        
+        # 替换占位符
+        if value is not None and value != "":
+            result = result.replace(f"#{placeholder}", str(value))
+    
+    return result
 
 
 def get_nested_value(data: Any, key_path: str) -> Any:
@@ -45,33 +95,3 @@ def get_nested_value(data: Any, key_path: str) -> Any:
         return current
     except (KeyError, IndexError, ValueError, TypeError):
         return ""
-
-
-def write_status_file(filename: str, content: str, max_retries: int = 3) -> bool:
-    """
-    将内容写入状态文件，支持重试机制。
-    
-    Args:
-        filename: 目标文件名
-        content: 要写入的内容
-        max_retries: 最大重试次数
-    
-    Returns:
-        写入是否成功
-    """
-    retry_delay = 0.3
-    
-    for attempt in range(max_retries):
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(content)
-            return True
-        except PermissionError:
-            print(f"文件 {filename} 正在被占用，{retry_delay}秒后重试...", flush=True)
-            time.sleep(retry_delay)
-        except OSError as e:
-            print(f"写入文件 {filename} 失败: {e}", flush=True)
-            return False
-    
-    print(f"写入文件 {filename} 失败，已超过最大重试次数", flush=True)
-    return False
