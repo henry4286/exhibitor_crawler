@@ -91,13 +91,19 @@ class ConfigTester:
         if self.config.request_mode == "double":
             print(f"\n二次请求配置:")
             print(f"  详情URL: {self.config.url_detail}")
-            print(f"  公司ID字段: {self.config.id_key}")
-            print(f"  公司名称字段: {self.config.company_name_key}")
             print(f"  详情Items Key: {self.config.items_key_detail}")
             if self.config.info_key:
                 print(f"  联系人字段映射 ({len(self.config.info_key)} 个字段):")
                 for i, (output_key, input_key) in enumerate(self.config.info_key.items(), 1):
                     print(f"    {i}. {output_key} ← {input_key}")
+            
+            # 显示基本配置中的ID和Company字段映射
+            id_field = self.config.company_info_keys.get('ID')
+            company_field = self.config.company_info_keys.get('Company')
+            if id_field and company_field:
+                print(f"  参数传递配置:")
+                print(f"    ID字段映射: {id_field}")
+                print(f"    Company字段映射: {company_field}")
     
     def test_list_request(self) -> tuple[bool, Any, List[Dict]]:
         """测试列表请求"""
@@ -133,10 +139,15 @@ class ConfigTester:
             traceback.print_exc()
             return False, None, []
     
-    def test_field_mapping(self, items: List[Dict]):
-        """测试字段映射"""
+    def test_field_mapping(self, items: List[Dict]) -> bool:
+        """测试字段映射
+        
+        Returns:
+            bool: 字段映射是否成功（至少能提取到一个有效字段）
+        """
         if not items:
-            return
+            print(f"\n⚠️  没有数据可供测试字段映射")
+            return False
         
         self.print_separator("测试字段映射")
         
@@ -144,15 +155,125 @@ class ConfigTester:
         
         test_item = items[0]
         results = {}
+        success_count = 0
+        total_fields = len(self.config.company_info_keys)
         
         for output_field, source_path in self.config.company_info_keys.items():
             value = get_nested_value(test_item, source_path)
             results[output_field] = value
             
-            status = "✅" if value else "⚠️"
-            value_str = str(value)[:100] if value else "(空)"
-            print(f"{status} {output_field}: {value_str}")
+            if value is not None and str(value).strip():  # 有有效值
+                success_count += 1
+                status = "✅"
+            else:
+                status = "❌"  # 找不到key或值为空都视为配置错误
+            
+            value_str = str(value)[:100] if value else "(未找到或为空)"
+            print(f"{status} {output_field} ← {source_path}: {value_str}")
+        
+        # 判断字段映射是否成功
+        mapping_success = success_count > 0
+        
+        print(f"\n字段映射结果: {success_count}/{total_fields} 个字段成功提取")
+        
+        if not mapping_success:
+            print(f"❌ 字段映射失败！所有配置的字段都无法从响应数据中提取到值")
+            print(f"   请检查：")
+            print(f"   1. company_info_keys 配置的字段路径是否正确")
+            print(f"   2. API返回的数据结构是否发生了变化")
+            print(f"   3. 字段路径中的key名称是否与实际数据匹配")
+        else:
+            print(f"✅ 字段映射成功！至少能提取到有效数据")
+        
+        return mapping_success
     
+    def test_pagination(self) -> bool:
+        """测试翻页功能
+        
+        Returns:
+            bool: 翻页功能是否正常
+        """
+        self.print_separator("测试翻页功能")
+        
+        try:
+            print(f"正在测试第1页和第2页数据...")
+            
+            # 请求第1页
+            print(f"\n📄 请求第1页...")
+            page1_data = self.http_client.send_request(self.config, page=1)
+            page1_items = self.data_parser.extract_items(page1_data, self.config.items_key)
+            
+            # 请求第2页
+            print(f"📄 请求第2页...")
+            page2_data = self.http_client.send_request(self.config, page=2)
+            page2_items = self.data_parser.extract_items(page2_data, self.config.items_key)
+            
+            page1_count = len(page1_items) if page1_items else 0
+            page2_count = len(page2_items) if page2_items else 0
+            
+            print(f"\n翻页测试结果:")
+            print(f"  第1页数据条数: {page1_count}")
+            print(f"  第2页数据条数: {page2_count}")
+            
+            # 判断翻页是否成功
+            if page1_count == 0:
+                print(f"❌ 翻页测试失败：第1页没有数据，无法验证翻页功能")
+                return False
+            
+            # 检查第2页是否有数据（某些情况下第2页可能没有数据）
+            if page2_count > 0:
+                print(f"✅ 翻页功能正常：成功获取到第2页数据")
+                
+                # 检查数据是否重复（简单检查第一条数据）
+                if page1_items and page2_items:
+                    # 尝试找一个唯一标识字段来检查重复
+                    id_fields = ['id', 'exhibitorId', 'applyId', 'company_id', 'companyId']
+                    found_unique_id = False
+                    
+                    for id_field in id_fields:
+                        if id_field in page1_items[0] and id_field in page2_items[0]:
+                            page1_ids = {item.get(id_field) for item in page1_items[:5] if item.get(id_field)}
+                            page2_ids = {item.get(id_field) for item in page2_items[:5] if item.get(id_field)}
+                            
+                            if page1_ids & page2_ids:  # 有交集，说明可能重复
+                                print(f"⚠️  警告：发现重复数据（ID字段: {id_field}）")
+                                print(f"   第1页前5条ID: {list(page1_ids)}")
+                                print(f"   第2页前5条ID: {list(page2_ids)}")
+                            else:
+                                print(f"✅ 数据无重复（检查ID字段: {id_field}）")
+                            
+                            found_unique_id = True
+                            break
+                    
+                    if not found_unique_id:
+                        print(f"⚠️  无法检查数据重复性：未找到合适的ID字段")
+                
+                return True
+            else:
+                print(f"⚠️  第2页没有数据")
+                print(f"   这可能是正常的（如果总共只有一页数据）")
+                print(f"   也可能是翻页参数配置有问题")
+                
+                # 尝试检查是否有翻页相关的配置参数
+                has_page_params = any(param for param in ['page', 'pageNum', 'currentPage', 'pageIndex'] 
+                                    if str(self.config.params or {}).lower().find(param.lower()) != -1)
+                
+                if has_page_params:
+                    print(f"   检测到翻页参数配置，但第2页无数据，可能是：")
+                    print(f"   1. 数据确实只有一页")
+                    print(f"   2. 翻页参数名称或位置配置错误")
+                    print(f"   3. API翻页逻辑有变化")
+                    return False  # 有翻页配置但第2页无数据，可能有问题
+                else:
+                    print(f"   未检测到明确的翻页参数配置")
+                    return True  # 没有翻页配置，第2页无数据是正常的
+            
+        except Exception as e:
+            print(f"❌ 翻页测试失败: {e}")
+            import traceback
+            print(f"\n详细错误:")
+            traceback.print_exc()
+            return False
     
     def test_detail_request(self, items: List[Dict]) -> bool:
         """测试详情请求（二次请求模式）- 使用与run_crawler相同的DetailFetcher
@@ -170,13 +291,18 @@ class ConfigTester:
         self.print_separator("测试详情API请求")
         
         test_company = items[0]
-        company_id = get_nested_value(test_company, self.config.id_key or "id")
-        company_name = get_nested_value(test_company, self.config.company_name_key or "name")
+        
+        # 从基本配置的字段映射中获取ID和Company字段
+        id_field = self.config.company_info_keys.get('ID', 'id')
+        company_field = self.config.company_info_keys.get('Company', 'name')
+        
+        company_id = get_nested_value(test_company, id_field)
+        company_name = get_nested_value(test_company, company_field)
         
         if not company_id:
             print(f"❌ 无法获取公司ID")
-            print(f"ID字段路径: {self.config.id_key}")
-            print(f"请检查id_key配置")
+            print(f"ID字段路径: {id_field}")
+            print(f"请检查基本配置的字段映射中是否包含ID字段")
             return False
         
         print(f"测试公司: {company_name or '(无名称)'}")
@@ -316,10 +442,16 @@ class ConfigTester:
             return False
         
         # 3. 测试字段映射
+        field_mapping_success = False
         if items:
-            self.test_field_mapping(items)
+            field_mapping_success = self.test_field_mapping(items)
         
-        # 4. 测试详情请求（如果是二次请求模式）
+        # 4. 测试翻页功能
+        pagination_success = True
+        if items:  # 只有当有数据时才测试翻页
+            pagination_success = self.test_pagination()
+        
+        # 5. 测试详情请求（如果是二次请求模式）
         detail_success = True
         if self.config.request_mode == "double":
             detail_success = self.test_detail_request(items)
@@ -327,8 +459,13 @@ class ConfigTester:
         # 总结
         self.print_separator("测试总结")
         
-        # 计算总体成功状态
-        all_success = list_success and (detail_success if self.config.request_mode == "double" else True)
+        # 计算总体成功状态 - 根据用户要求，字段映射成功是关键判断标准
+        if self.config.request_mode == "single":
+            # 单次请求模式：列表请求成功 + 字段映射成功 + 翻页功能正常（翻页失败不算致命错误）
+            all_success = list_success and field_mapping_success
+        else:
+            # 二次请求模式：列表请求成功 + 字段映射成功 + 详情请求成功 + 翻页功能正常（翻页失败不算致命错误）
+            all_success = list_success and field_mapping_success and detail_success
         
         if all_success:
             print(f"✅ 配置测试完成 - 所有测试通过！")
@@ -339,7 +476,8 @@ class ConfigTester:
         print(f"  - 基本配置: ✅ 正常")
         print(f"  - API连接: {'✅ 正常' if list_success else '❌ 失败'}")
         print(f"  - 数据提取: {'✅ 正常' if items else '⚠️  无数据'}")
-        print(f"  - 字段映射: {'✅ 已验证' if items else '⚠️ 未验证'}")
+        print(f"  - 字段映射: {'✅ 成功' if field_mapping_success else '❌ 失败'}")
+        print(f"  - 翻页功能: {'✅ 正常' if pagination_success else '⚠️  可能有问题'}")
         
         if self.config.request_mode == "double":
             print(f"  - 详情请求: {'✅ 成功' if detail_success else '❌ 失败'}")
@@ -376,7 +514,8 @@ def main():
         print("  2. 测试API接口是否可访问")
         print("  3. 检查数据提取路径是否正确")
         print("  4. 验证字段映射是否有效")
-        print("  5. 测试二次请求（如适用）")
+        print("  5. 测试翻页功能（新增）")
+        print("  6. 测试二次请求（如适用）")
         print("\n示例:")
         print("  python test_config.py 无人机展")
         print("  python test_config.py 农产品展")
