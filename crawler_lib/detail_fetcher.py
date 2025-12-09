@@ -282,6 +282,84 @@ class DetailFetcher:
                 return True
         return False
     
+    def fetch_batch_contacts_with_basic_info(self, items: List[Dict[str, Any]],
+                                            companies_basic_info: List[Dict[str, Any]],
+                                            fetch_contacts: bool = True) -> List[Dict[str, Any]]:
+        """
+        批量获取联系人并合并基本信息（二次请求模式专用）
+        
+        Args:
+            items: 原始items列表（用于占位符替换）
+            companies_basic_info: 解析后的公司基本信息列表（用于合并）
+            fetch_contacts: 是否获取联系人（必须为True）
+        
+        Returns:
+            联系人列表（每个联系人包含公司基本信息和联系人详情）
+        """
+        results = []
+        
+        if not items or not companies_basic_info:
+            return results
+        
+        print(f"📥 开始批量获取 {len(companies_basic_info)} 个公司的联系人", flush=True)
+        
+        # **关键修复**：使用字典记录已处理的公司，避免重复
+        processed_companies = set()
+        results_lock = threading.Lock()
+        
+        # 创建索引映射：将items和companies_basic_info对应起来
+        # 假设它们的顺序是一致的
+        if len(items) != len(companies_basic_info):
+            print(f"⚠️ 警告：原始items数量({len(items)})与基本信息数量({len(companies_basic_info)})不一致", flush=True)
+            # 取较小的长度
+            min_len = min(len(items), len(companies_basic_info))
+            items = items[:min_len]
+            companies_basic_info = companies_basic_info[:min_len]
+        
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # 提交任务：传入原始item（用于占位符替换）
+            future_to_index = {
+                executor.submit(self.fetch_company_contacts, item): i 
+                for i, item in enumerate(items)
+            }
+            
+            # 收集结果并合并基本信息
+            for future in as_completed(future_to_index):
+                try:
+                    contacts_list = future.result()  # 联系人列表
+                    index = future_to_index[future]
+                    basic_info = companies_basic_info[index]  # 对应的基本信息
+                    
+                    # 从基本信息中获取公司名用于日志
+                    company_name = basic_info.get('Company', '未知公司')
+                    
+                    # 使用基本信息作为唯一键
+                    company_key = tuple(sorted((k, str(v)) for k, v in basic_info.items()))
+                    
+                    with results_lock:
+                        if company_key in processed_companies:
+                            print(f"⚠️  检测到重复处理的公司 [{company_name}]，跳过", flush=True)
+                            continue
+                        
+                        processed_companies.add(company_key)
+                        
+                        # **关键步骤**：将基本信息合并到每个联系人记录中
+                        for contact in contacts_list:
+                            # 创建完整记录：基本信息 + 联系人信息
+                            full_record = basic_info.copy()  # 先复制基本信息
+                            full_record.update(contact)  # 再添加联系人信息
+                            results.append(full_record)
+                        
+                except Exception as e:
+                    index = future_to_index[future]
+                    basic_info = companies_basic_info[index]
+                    company_name = basic_info.get('Company', '未知公司')
+                    print(f"❌ 处理公司 {company_name} 时发生异常: {e}", flush=True)
+        
+        print(f"✅ 批量获取完成，成功: {self._success_count}, 失败: {self._fail_count}", flush=True)
+        
+        return results
+    
     def fetch_batch_details(self, companies: List[Dict[str, Any]], 
                            fetch_contacts: bool = False) -> List[Any]:
         """

@@ -567,10 +567,10 @@ class DoubleFetchCrawler:
                         log_error(f"删除旧文件失败", e)
             
             while True:
-                # 步骤1: 获取这一页的公司列表
-                companies = self.crawl_page(page)
+                # 步骤1: 获取这一页的公司列表（原始items）
+                items = self.crawl_page(page)
                 
-                if not companies:
+                if not items:
                     consecutive_empty += 1
                     if consecutive_empty >= 3:
                         log_error("连续3页无数据，停止爬取")
@@ -579,19 +579,24 @@ class DoubleFetchCrawler:
                     continue
                 
                 # 检查是否与前一页数据完全相同（避免无翻页API的死循环）
-                if previous_companies is not None and self._is_same_companies(previous_companies, companies):
+                if previous_companies is not None and self._is_same_companies(previous_companies, items):
                     log_error(f"第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取")
                     break
                 
                 consecutive_empty = 0
                 
+                # **关键修复**: 先解析第一次请求的公司基本信息
+                companies_basic_info = self.data_parser.parse_company_info(items, self.config.company_info_keys)
+                
                 # 在提交任务前先去重公司列表（API自身可能返回重复数据）
-                unique_companies = self._remove_duplicate_companies(companies)
+                unique_companies_basic = self._remove_duplicate_companies(companies_basic_info)
                 
                 # 步骤2: 立即抓取这一页公司的联系人
-                # 使用DetailFetcher的fetch_batch_details方法（与test_config.py相同）
-                all_contacts = self.detail_fetcher.fetch_batch_details(
-                    unique_companies, 
+                # 注意：需要传入原始items，因为DetailFetcher需要用原始字段做占位符替换
+                # 同时传入解析后的基本信息，用于合并
+                all_contacts = self.detail_fetcher.fetch_batch_contacts_with_basic_info(
+                    items,  # 原始items，用于占位符替换
+                    unique_companies_basic,  # 解析后的基本信息，用于合并到联系人
                     fetch_contacts=True  # 获取联系人模式
                 )
                 
@@ -608,8 +613,8 @@ class DoubleFetchCrawler:
                     log_contacts_saved(page, len(unique_contacts))
                 
                 # 更新统计
-                self._total_companies += len(companies)
-                previous_companies = companies  # 保存当前页数据用于下次比较
+                self._total_companies += len(items)
+                previous_companies = items  # 保存当前页数据用于下次比较
                 
                 # 继续下一页（无延迟，速度优先）
                 page += 1

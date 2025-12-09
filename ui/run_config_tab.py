@@ -105,11 +105,17 @@ class RunConfigTab:
             self.current_mode_label.config(text="未选择")
     
     def log_message(self, message):
-        """添加日志消息"""
+        """添加日志消息 - 同时输出到UI和终端"""
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
+        log_line = f"[{timestamp}] {message}"
+        
+        # 输出到GUI日志窗口
+        self.log_text.insert(tk.END, f"{log_line}\n")
         self.log_text.see(tk.END)
         self.config_editor.root.update_idletasks()
+        
+        # 同时输出到终端控制台
+        print(log_line)
     
     def clear_log(self):
         """清空日志"""
@@ -182,7 +188,7 @@ class RunConfigTab:
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
+                    stderr=subprocess.PIPE,  # 单独捕获stderr，不合并到stdout
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
@@ -190,14 +196,28 @@ class RunConfigTab:
                     errors='replace'
                 )
                 
-                # 实时读取输出
+                # 实时读取输出，过滤掉日志系统的内部错误
+                in_logging_error = False
                 while True:
                     if self.current_process and self.current_process.stdout:
                         output = self.current_process.stdout.readline()
                         if output == '' and self.current_process.poll() is not None:
                             break
                         if output:
-                            self.log_message(output.strip())
+                            line = output.strip()
+                            
+                            # 过滤日志系统错误（不显示在UI上）
+                            if '--- Logging error ---' in line:
+                                in_logging_error = True
+                                continue
+                            elif in_logging_error:
+                                # 跳过日志错误的详细内容，直到遇到正常日志
+                                if line.startswith('[') or line.startswith('🚀') or line.startswith('📄') or line.startswith('💾') or line.startswith('✅') or line.startswith('⚠️') or line.startswith('❌'):
+                                    in_logging_error = False
+                                    self.log_message(line)
+                                continue
+                            else:
+                                self.log_message(line)
                     else:
                         break
                 
@@ -293,7 +313,7 @@ class RunConfigTab:
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
+                    stderr=subprocess.PIPE,  # 单独捕获stderr，过滤日志错误
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
@@ -301,14 +321,28 @@ class RunConfigTab:
                     errors='replace'
                 )
                 
-                # 实时读取输出
+                # 实时读取输出，过滤掉日志系统的内部错误
+                in_logging_error = False
                 while True:
                     if self.current_process and self.current_process.stdout:
                         output = self.current_process.stdout.readline()
                         if output == '' and self.current_process.poll() is not None:
                             break
                         if output:
-                            self.log_message(output.rstrip())
+                            line = output.rstrip()
+                            
+                            # 过滤日志系统错误（不显示在UI上）
+                            if '--- Logging error ---' in line:
+                                in_logging_error = True
+                                continue
+                            elif in_logging_error:
+                                # 跳过日志错误的详细内容，直到遇到正常日志
+                                if line.startswith('=') or line.startswith('✅') or line.startswith('❌') or line.startswith('测试') or line.startswith('配置'):
+                                    in_logging_error = False
+                                    self.log_message(line)
+                                continue
+                            else:
+                                self.log_message(line)
                     else:
                         break
                 

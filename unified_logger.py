@@ -38,13 +38,15 @@ class UnifiedLogger:
         self._loggers['console'] = console_logger
         
         # 2. 请求日志记录器 - 记录所有请求参数和响应体
+        # 注意：增大文件大小限制以减少多线程环境下的文件轮转冲突
         request_logger = logging.getLogger('request')
         if not request_logger.handlers:
             request_handler = RotatingFileHandler(
                 'logs/request_history.log',
-                maxBytes=1*1024*1024,  # 1MB
-                backupCount=5,
-                encoding='utf-8'
+                maxBytes=50*1024*1024,  # 增大到50MB，减少轮转频率
+                backupCount=3,
+                encoding='utf-8',
+                delay=True  # 延迟打开文件，减少文件锁冲突
             )
             request_handler.setLevel(logging.DEBUG)
             request_handler.setFormatter(logging.Formatter(

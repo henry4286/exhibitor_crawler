@@ -373,9 +373,16 @@ class HttpClient:
                 response.raise_for_status()
                 response_data = HttpClient.parse_response(response)
                 
-                # 检测业务层限流
-                if HttpClient.is_rate_limit(response_data):
-                    raise Exception(response_data)
+                # 检测业务层限流（只在响应表明错误时才检查）
+                # 成功响应（通常有 code=0 或 success字段）不应该检查限流
+                is_success = (
+                    (isinstance(response_data, dict) and response_data.get('code') == 0) or
+                    (isinstance(response_data, dict) and response_data.get('msg') == 'success') or
+                    (isinstance(response_data, dict) and response_data.get('success') is True)
+                )
+                
+                if not is_success and HttpClient.is_rate_limit(response_data):
+                    raise Exception(str(response_data))
                 
              
                 # 成功，如果之前有重试，打印恢复信息
@@ -395,13 +402,8 @@ class HttpClient:
             
                 wait_time = HttpClient.calculate_retry_delay(attempt)
                 
-                # 控制台只显示简化的错误信息
-                error_msg = str(e)
-                if len(error_msg) > 100:
-                    error_msg = error_msg[:100] + "..."
-                
-                print(f"⚠️ {context} ，第{attempt}次重试，"
-                      f"等待{wait_time:.0f}秒... ({error_msg})", flush=True)
+                # 控制台只显示简洁的重试信息（不包含响应体）
+                print(f"⚠️ {context} - 第{attempt}次重试，等待{wait_time:.0f}秒...", flush=True)
                 
                 # 将详细错误信息记录到日志文件
                 try:
@@ -409,9 +411,10 @@ class HttpClient:
                         url=url,
                         params=params,
                         data=data,
-                        response={"error": str(e), "attempt": attempt},
+                        response={"error": str(e), "attempt": attempt, "is_rate_limit": is_rate_limit},
                         method=f"{method}_RETRY"
                     )
+                    log_error(f"{context} - 第{attempt}次重试", exception=e)
                 except Exception:
                     # 如果日志记录失败，忽略错误
                     pass
