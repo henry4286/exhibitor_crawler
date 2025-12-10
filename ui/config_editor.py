@@ -528,19 +528,8 @@ class ConfigUIEditor:
     
     def on_closing(self):
         """窗口关闭事件处理"""
-        if self.ask_okcancel("退出", "确定要退出吗？程序将询问是否同步配置到远程仓库。"):
-            try:
-                # 确保当前编辑的配置已保存
-                if self.current_row is not None:
-                    # 如果正在编辑某个配置，提示用户保存
-                    if self.ask_okcancel("保存更改", "检测到有未保存的更改，是否保存当前编辑的配置？"):
-                        self.save_config()
+        self.root.destroy()
                 
-                log_info("用户关闭配置编辑器，程序退出时将询问是否同步配置")
-            except Exception as e:
-                log_exception(f"关闭窗口时发生错误: {e}", exc_info=True)
-            finally:
-                self.root.destroy()
     
     # 消息框方法的简化版本（带日志记录）
     def show_info(self, message):
