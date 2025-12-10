@@ -443,12 +443,12 @@ class CompanyCrawler(BaseCrawler):
             
             # 如果连续空页数达到阈值，停止爬取
             if consecutive_empty_count >= max_consecutive_empty:
-                log_error(f"检测到连续{consecutive_empty_count}页无数据，停止爬取")
+                log_info(f"检测到连续{consecutive_empty_count}页无数据，停止爬取")
                 break
             
             # 如果整批都是空的，也停止
             if all(not batch_results[p] for p in sorted_pages):
-                log_error("整批数据都为空，停止爬取")
+                log_info("整批数据都为空，停止爬取")
                 break
             
             # 检测批次中是否有重复数据（无翻页API检测）
@@ -458,7 +458,7 @@ class CompanyCrawler(BaseCrawler):
                 second_page = sorted_pages[1]
                 if (batch_results[first_page] and batch_results[second_page] and 
                     self._is_same_data(batch_results[first_page], batch_results[second_page])):
-                    log_error(f"检测到第{first_page}页和第{second_page}页数据相同，疑似无翻页API，停止爬取")
+                    log_info(f"检测到第{first_page}页和第{second_page}页数据相同，疑似无翻页API，停止爬取")
                     break
             
             # 继续下一批
@@ -534,7 +534,7 @@ class DoubleFetchCrawler(BaseCrawler):
             是否成功获取到数据
         """
         if self.config is None:
-            log_error("配置未加载")
+            log_info("配置未加载")
             return False
         
         page = self.start_page
@@ -561,14 +561,14 @@ class DoubleFetchCrawler(BaseCrawler):
                 if not items:
                     consecutive_empty += 1
                     if consecutive_empty >= 3:
-                        log_error("连续3页无数据，停止爬取")
+                        log_info("连续3页无数据，停止爬取")
                         break
                     page += 1
                     continue
                
                 # 检查是否与前一页数据完全相同（避免无翻页API的死循环）
                 if previous_companies is not None and self._is_same_data(previous_companies, items):
-                    log_error(f"第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取")
+                    log_info(f"第{page}页数据与第{page-1}页相同，疑似无翻页API，停止爬取")
                     break
                 
                 consecutive_empty = 0
