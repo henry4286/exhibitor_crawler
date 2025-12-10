@@ -25,11 +25,15 @@ from datetime import datetime
 import locale
 import io
 
-# 重设标准输出为UTF-8编码
+# 重设标准输出为UTF-8编码，并确保无缓冲
 if sys.platform == 'win32':
     # Windows系统特殊处理
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True, errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True, errors='replace')
+else:
+    # Linux/Mac系统
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True, errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', line_buffering=True, errors='replace')
 
 # 导入统一日志系统
 from unified_logger import log_info, log_error, log_exception, log_page_progress
@@ -129,8 +133,12 @@ def main():
                 start_page = int(sys.argv[idx + 1])
         
         try:
+            # 测试输出：确保UI中能看到输出
+            print("🔄 开始创建爬虫实例...", flush=True)
             crawler = UnifiedCrawler(exhibition_code, max_workers=max_workers, start_page=start_page)
+            print("🔄 爬虫实例创建完成，开始爬取...", flush=True)
             success = crawler.crawl()
+            print("🔄 爬取完成...", flush=True)
             
             if success:
                 print("\n✓ 爬取成功！", flush=True)

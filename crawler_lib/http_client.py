@@ -16,21 +16,14 @@ import requests
 
 from .config_manager import CrawlerConfig
 # 导入新的简化日志系统
-try:
-    from unified_logger import log_request, log_error
-except ImportError:
-    # 如果日志模块不可用，提供空函数
-    def log_request(*args, **kwargs):
-        pass
-    def log_error(*args, **kwargs):
-        pass
+from unified_logger import log_request, log_error
 
 
 # 限流检测关键词
 RATE_LIMIT_KEYWORDS = [
-    '频繁', '限流', '访问受限', '请稍后', '请求过快',
+    '频繁', '限流', '访问受限', '请稍后', '请求过快','失败', '错误', 
     'rate limit', 'too many', 'forbidden', 'throttle', 
-    'slow down', 'try again later'
+    'slow down', 'try again later', 'error'
 ]
 
 class HttpClient:
@@ -43,7 +36,7 @@ class HttpClient:
     @staticmethod
     def build_request_params(config: CrawlerConfig, page: int, page_size: int = 20) -> tuple[str, str]:
         """
-        构建请求参数，替换分页占位符
+        构建列表页请求参数，替换分页占位符
         
         Args:
             config: 爬虫配置
@@ -61,9 +54,8 @@ class HttpClient:
         
         # 替换分页占位符
         replacements = {
-            "{page}": str(page),
-            "{skipCount}": str(skip_count),
-            "{pageSize}": str(page_size),
+            "#page": str(page),
+            "#skipCount": str(skip_count)
         }
         
         for placeholder, value in replacements.items():
@@ -98,109 +90,7 @@ class HttpClient:
             return data_str
     
     @staticmethod
-    def send_request(config: CrawlerConfig, page: int, timeout: int = 30) -> dict:
-        """
-        发送HTTP请求并返回响应数据
-        
-        Args:
-            config: 爬虫配置
-            page: 当前页码
-            timeout: 请求超时时间（秒）
-        
-        Returns:
-            响应的JSON数据
-        
-        Raises:
-            requests.RequestException: 请求失败时抛出
-        """
-        params_str, data_str = HttpClient.build_request_params(config, page)
-        
-        # 处理URL中的分页占位符
-        url = str(config.url)
-        skip_count = (page - 1) * 20  # 默认每页20条
-        url_replacements = {
-            "{page}": str(page),
-            "{skipCount}": str(skip_count),
-            "{pageSize}": "20",
-        }
-        
-        for placeholder, value in url_replacements.items():
-            url = url.replace(placeholder, value)
-        
-        # 准备请求参数
-        request_params = None
-        if params_str not in ("nan", "{}", "", "None"):
-            try:
-                params_dict = json.loads(params_str)
-                request_params = params_dict
-            except (json.JSONDecodeError, ValueError):
-                pass
-        
-        # 准备请求数据
-        request_data = HttpClient.prepare_request_data(data_str, config.headers)
-        
-        # 根据请求方法发送请求
-        if config.request_method.upper() == "POST":
-            # POST 请求
-            if isinstance(request_data, dict):
-                # JSON 格式
-                response = requests.post(
-                    url=url,
-                    headers=config.headers,
-                    json=request_data,
-                    params=request_params,
-                    verify=False,
-                    timeout=timeout
-                )
-            elif isinstance(request_data, str):
-                # URL encoded 或纯文本
-                response = requests.post(
-                    url=url,
-                    headers=config.headers,
-                    data=request_data,
-                    params=request_params,
-                    verify=False,
-                    timeout=timeout
-                )
-            else:
-                # 无数据的 POST
-                response = requests.post(
-                    url=url,
-                    headers=config.headers,
-                    params=request_params,
-                    verify=False,
-                    timeout=timeout
-                )
-        else:
-            # GET 请求
-            response = requests.get(
-                url=url,
-                headers=config.headers,
-                params=request_params,
-                verify=False,
-                timeout=timeout
-            )
-        
-        response.raise_for_status()
-        response_data = HttpClient.parse_response(response)
-        
-        # 记录请求日志（使用新的简化日志系统）
-        try:
-            log_request(
-                url=url,
-                params=request_params,
-                data=request_data if isinstance(request_data, dict) else None,
-                response=response_data,
-                method=config.request_method.upper()
-            )
-        except Exception as e:
-            # 请求日志记录失败不应该影响主要功能
-            pass
-        
-        return response_data
-    
-    @staticmethod
-    def parse_response(response: requests.Response) -> dict:
+    def parse_response(response: requests.Response) -> dict | list:
         """
         智能解析响应体，支持多种格式
         
@@ -214,7 +104,7 @@ class HttpClient:
             response: requests响应对象
         
         Returns:
-            解析后的字典数据
+            解析后的或列表数据
         
         Raises:
             ValueError: 所有解析方法均失败时抛出
@@ -293,21 +183,44 @@ class HttpClient:
         return min(base_delay + jitter, max_delay)
     
     @staticmethod
-    def is_rate_limit(data: Any) -> bool:
+    def is_rate_limit(response_data: dict | list) ->tuple[bool,str]:
         """
-        检测异常是否为限流相关错误
+        检查业务层面是否成功
+        
+        常见的失败响应格式：
+        1. {"code": 1000, "message": "请求过于频繁", "success": false}
+        2. {"success": false, "msg": "限流"}
+        3. {"status": false, "message": "失败"}
+        4. {"error": "...", "data": null}
         
         Args:
-            data: 待监测的数据
+            response_data: API响应数据
         
         Returns:
-            True表示被限流，False表示正常
+            True表示业务成功，False表示业务失败
         """
-        error_str = str(data).lower()
-        for keyword in RATE_LIMIT_KEYWORDS:
-            if keyword.lower() in error_str:
-                return True
-        return False
+        if not isinstance(response_data, dict):
+            return True, ""  
+        
+        # 检查常见的失败标识
+        if 'success' in response_data:
+            if response_data['success'] is False or response_data['success'] == 'false':
+                return False ,"success字段为False"
+        
+        if 'error' in response_data:
+            error = response_data['error']
+            if error and error not in ['', None, 'null']:
+                return False, f"error字段表示失败: {error}"
+        
+        for msg_key in ['message', 'msg', 'error_msg', 'errmsg', 'error_message']:
+            if msg_key in response_data:
+                msg = str(response_data[msg_key]).lower()
+                for keyword in RATE_LIMIT_KEYWORDS:
+                    if keyword.lower() in msg:
+                        return False, f"{msg_key}字段包含限流关键词: {msg}"
+        
+        # 都没有检测到失败标识，认为成功
+        return True, ""
     
     @staticmethod
     def send_request_with_retry(
@@ -317,10 +230,8 @@ class HttpClient:
         params: Optional[Dict] = None,
         data: Optional[Dict] = None,
         timeout: int = 30,
-        context: str = "",
-        validate_non_empty: bool = False,
-        items_key: Optional[str] = None
-    ) -> Dict:
+        context: str = ""
+    ) -> dict | list:
         """
         发送HTTP请求，带无限重试机制
         
@@ -338,12 +249,16 @@ class HttpClient:
             data: POST数据（字典格式）
             timeout: 超时时间
             context: 上下文描述（用于日志输出）
-            validate_non_empty: 是否验证返回数据非空（用于联系人获取）
-            items_key: 数据项的键路径（用于提取数据列表）
         
         Returns:
-            响应JSON数据（必定成功才返回）
+            响应JSON数据
         """
+        
+        #print("url",url)
+        #print("method",method)
+        #print("params",params)
+        #print("data",data)
+        
         attempt = 0
         headers = headers or {}
         
@@ -371,53 +286,34 @@ class HttpClient:
                     )
                 
                 response.raise_for_status()
+                
                 response_data = HttpClient.parse_response(response)
                 
-                # 检测业务层限流（只在响应表明错误时才检查）
-                # 成功响应（通常有 code=0 或 success字段）不应该检查限流
-                is_success = (
-                    (isinstance(response_data, dict) and response_data.get('code') == 0) or
-                    (isinstance(response_data, dict) and response_data.get('msg') == 'success') or
-                    (isinstance(response_data, dict) and response_data.get('success') is True)
-                )
-                
-                if not is_success and HttpClient.is_rate_limit(response_data):
-                    raise Exception(str(response_data))
-                
-             
-                # 成功，如果之前有重试，打印恢复信息
-                if attempt > 1:
-                    print(f"✅ {context} 第{attempt}次重试成功", flush=True)
-                
-                return response_data
+                is_success, reason = HttpClient.is_rate_limit(response_data)
+                if not is_success: 
+                    wait_time = HttpClient.calculate_retry_delay(attempt)
+                    print(f"❌ {context} 请求失败触发限流重试机制,触发原因：{reason}: ", flush=True)
+                    print(f"⚠️ {context} - 第{attempt}次重试，等待{wait_time:.0f}秒...", flush=True)
+                    time.sleep(wait_time)
+                    
+                    log_request(
+                            url=url,
+                            params=params,
+                            data=data,
+                            response=response_data,
+                            method=method
+                        )
+                    print(f"📝 已记录第{attempt}次重试请求日志", flush=True)
+                    
+                else:
+                    # 成功，如果之前有重试，打印恢复信息
+                    if attempt > 1:
+                        print(f"✅ {context} 第{attempt}次重试成功", flush=True)
+                    
+                    return response_data
                 
             except Exception as e:
                 
-                is_rate_limit = HttpClient.is_rate_limit(e)
+                pass
+                    
                 
-                if not is_rate_limit and not validate_non_empty:
-                    # 非限流且不验证空数据，直接抛出异常
-                    raise
-                
-            
-                wait_time = HttpClient.calculate_retry_delay(attempt)
-                
-                # 控制台只显示简洁的重试信息（不包含响应体）
-                print(f"⚠️ {context} - 第{attempt}次重试，等待{wait_time:.0f}秒...", flush=True)
-                
-                # 将详细错误信息记录到日志文件
-                try:
-                    log_request(
-                        url=url,
-                        params=params,
-                        data=data,
-                        response={"error": str(e), "attempt": attempt, "is_rate_limit": is_rate_limit},
-                        method=f"{method}_RETRY"
-                    )
-                    log_error(f"{context} - 第{attempt}次重试", exception=e)
-                except Exception:
-                    # 如果日志记录失败，忽略错误
-                    pass
-                
-                time.sleep(wait_time)
-                # 继续重试

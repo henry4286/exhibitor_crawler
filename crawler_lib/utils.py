@@ -6,7 +6,7 @@
 
 import time
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional,List
 
 
 def replace_placeholders(template: str, data: Dict[str, Any], field_mapping: Optional[Dict[str, str]] = None) -> str:
@@ -40,16 +40,13 @@ def replace_placeholders(template: str, data: Dict[str, Any], field_mapping: Opt
     
     result = template
     for placeholder in placeholders:
+
+        value = None
         # 从数据中获取对应的值
-        value = get_nested_value(data, placeholder)
-        
-        # 如果从数据中获取不到，尝试从字段映射中查找
-        if (value == "" or value is None) and field_mapping:
-            # 尝试反向查找：如果placeholder是映射的输出key，找到对应的输入key
-            for output_key, input_key in field_mapping.items():
-                if output_key == placeholder:
-                    value = get_nested_value(data, input_key)
-                    break
+        for output_key, input_key in field_mapping.items():
+            if input_key == placeholder:
+                value = get_nested_value(data, output_key)
+                break
         
         # 替换占位符
         if value is not None and value != "":
@@ -67,7 +64,10 @@ def get_nested_value(data: Any, key_path: str) -> Any:
         key_path: 使用点号分隔的键路径，如 "data.items.0.name"
     
     Returns:
-        键路径对应的值，如果路径无效则返回空字符串
+        键路径对应的值，如果路径无效则抛出异常。
+        可能原因：
+        1. 配置中的请求参数错误，导致获取到的响应体data异常
+        2. key_path路径错误，导致无法正确提取数据
     
     Examples:
         >>> data = {"user": {"name": "张三", "contacts": [{"phone": "123"}]}}
@@ -83,7 +83,7 @@ def get_nested_value(data: Any, key_path: str) -> Any:
     try:
         for key in key_path.split('.'):
             if isinstance(current, dict):
-                current = current.get(key)
+                current = current[key]
             elif isinstance(current, list):
                 index = int(key)
                 current = current[index] if index < len(current) else None
@@ -94,4 +94,5 @@ def get_nested_value(data: Any, key_path: str) -> Any:
                 return ""
         return current
     except (KeyError, IndexError, ValueError, TypeError):
-        return ""
+        raise
+

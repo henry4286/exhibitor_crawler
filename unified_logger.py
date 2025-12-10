@@ -80,6 +80,9 @@ class UnifiedLogger:
     # ========== 控制台输出 ==========
     def console(self, message: str) -> None:
         """控制台输出 - 简洁信息"""
+        # 直接使用print输出，确保与UI显示一致
+        print(message)
+        # 同时记录到控制台日志器（用于文件记录）
         self._loggers['console'].info(message)
     
     # ========== 请求日志 ==========
@@ -87,25 +90,37 @@ class UnifiedLogger:
                    params: Optional[Dict[str, Any]] = None,
                    data: Any = None, 
                    response: Any = None) -> None:
-        """记录请求参数和响应体到请求日志文件"""
-        # 构建请求信息
-        request_info = f"[{method}] {url}"
+        """记录请求参数和响应体到请求日志文件（覆盖写入）"""
+        # 获取当前时间
+        from datetime import datetime
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 构建完整的日志内容
+        log_content = f"{current_time} - [{method}] {url}"
         
         if params:
             params_str = self._safe_json(params)
-            request_info += f"\n参数: {params_str}"
+            log_content += f"\n参数: {params_str}"
         
         if data:
             data_str = self._safe_json(data)
-            request_info += f"\n请求体: {data_str}"
-        
-        # 记录请求
-        self._loggers['request'].debug(request_info)
+            log_content += f"\n请求体: {data_str}"
         
         # 记录响应
         if response is not None:
             response_str = self._safe_json(response, max_length=5000)
-            self._loggers['request'].debug(f"响应体: {response_str}\n{'-'*80}")
+            log_content += f"\n响应体: {response_str}\n{'-'*80}"
+        else:
+            log_content += f"\n{'-'*80}"
+        
+        # 直接覆盖写入文件
+        try:
+            with open('logs/request_history.log', 'w', encoding='utf-8') as f:
+                f.write(log_content + '\n')
+        except Exception as e:
+            # 如果写入失败，回退到原有的logger方式
+            self.console(f"⚠️  日志写入失败，使用备用方式: {str(e)}")
+            self._loggers['request'].debug(log_content)
     
     # ========== 错误日志 ==========
     def log_error(self, message: str, exception: Optional[Exception] = None) -> None:
@@ -222,7 +237,11 @@ def log_import_error(module_name: str, solution: Optional[str] = None) -> None:
 
 def log_page_progress(page: int, count: int) -> None:
     """爬虫：记录页面进度"""
-    console(f"📄 第{page}页完成，获取到{count}条数据")
+    message = f"📄 第{page}页完成，获取到{count}条数据"
+    console(message)
+    # 强制刷新标准输出，确保在UI中实时显示
+    import sys
+    sys.stdout.flush()
 
 
 def log_list_progress(page: int, company_count: int) -> None:

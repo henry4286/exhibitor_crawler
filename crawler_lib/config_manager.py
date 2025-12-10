@@ -6,7 +6,7 @@
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import pandas as pd
@@ -15,6 +15,10 @@ import pandas as pd
 @dataclass
 class CrawlerConfig:
     """爬虫配置数据类"""
+    
+    exhibition_code: str = field(metadata={'description': '展会代码'})
+    miniprogram_name: str 
+    
     # 基本配置
     url: str
     request_method: str
@@ -86,6 +90,8 @@ class ConfigManager:
             
             # 基本配置
             config = CrawlerConfig(
+                exhibition_code=row['exhibition_code'],
+                miniprogram_name=row['miniprogram_name'],
                 url=row['url'],
                 request_method=row['request_method'],
                 headers=json.loads(row['headers']),

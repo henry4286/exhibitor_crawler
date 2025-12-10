@@ -84,7 +84,17 @@ class ExcelExporter:
                     # 写入数据行
                     if worksheet is not None:
                         for company in company_list:
-                            row_data = [f" {company.get(header, '')}" for header in headers]
+                            # 直接获取数据，不添加前缀空格，避免Excel格式错误
+                            row_data = []
+                            for header in headers:
+                                value = company.get(header, '')
+                                # 清理控制字符，避免Excel保存错误
+                                if isinstance(value, str):
+                                    # 移除控制字符（ASCII 0-31，除了制表符、换行符、回车符）
+                                    cleaned_value = ''.join(char for char in value if ord(char) >= 32 or char in '\t\n\r')
+                                    row_data.append(cleaned_value)
+                                else:
+                                    row_data.append(value)
                             worksheet.append(row_data)
                     
                     workbook.save(file_path)

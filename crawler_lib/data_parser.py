@@ -4,7 +4,7 @@
 负责从API响应中提取和解析公司信息
 """
 
-from typing import Any
+from typing import Any, Dict, List
 
 from .utils import get_nested_value
 
@@ -13,58 +13,52 @@ class DataParser:
     """
     数据解析器
     
-    负责从API响应中提取公司信息。
+    负责从API响应中提取公司信息及联系人信息。
     """
     
     @staticmethod
-    def extract_items(response_data: Any, items_key: str) -> list:
+    def extract_items(response_data: Dict[str, Any], items_key: str) -> List[Dict[str, Any]]:
         """
-        从响应数据中提取公司列表
-        
+        从API响应数据中提取指定路径的列表数据。
+        如果提取到的数据是字典，会强制转化成单字典列表
         Args:
             response_data: API响应数据
-            items_key: 用于定位公司列表的键路径
+            items_key: 数据提取路径（如 "data.list"）
         
         Returns:
-            公司信息列表
+            提取的列表数据
         """
-        # 处理特殊格式的响应（如数组格式）
-        if isinstance(response_data, list) and len(response_data) > 1:
-            items = response_data[1].get("Table", [])
-        else:
-            items = response_data
+        if not response_data or not isinstance(response_data, dict):
+            return []
         
+        items = response_data
         # 根据items_key提取嵌套数据
         if items_key and str(items_key) not in ("nan", "", "None"):
-            for key in items_key.split('.'):
-                if isinstance(items, dict):
-                    items = items.get(key, [])
-                elif isinstance(items, list) and key.isdigit():
-                    index = int(key)
-                    items = items[index] if index < len(items) else []
-                else:
-                    break
+            items = get_nested_value(response_data, items_key)
+                    
+        if isinstance(items, dict):
+            items = [items]  
         
         return items if isinstance(items, list) else []
     
     @staticmethod
-    def parse_company_info(items: list, field_mappings: dict) -> list[dict]:
+    def parse_items(items: list, field_mappings: dict) -> list[dict]:
         """
-        解析公司信息列表
+        从响应体的信息主体数据列表中，根据字段映射提取需要的字段信息
         
         Args:
-            items: 原始公司数据列表
+            items: 响应体的信息主体数据列表
             field_mappings: 字段映射配置 {输出字段名: 源数据路径}
         
         Returns:
-            解析后的公司信息列表
+            解析后的数据信息列表
         """
-        company_list = []
+        results = []
         
         for item in items:
             company_info = {}
             for output_field, source_path in field_mappings.items():
                 company_info[output_field] = get_nested_value(item, source_path)
-            company_list.append(company_info)
+            results.append(company_info)
         
-        return company_list
+        return results

@@ -88,8 +88,8 @@ class JSONEditor:
                 if isinstance(value, (int, float)):
                     pass  # 保持原值
                 else:
-                    # 特殊处理包含{page}占位符的情况
-                    if isinstance(value, str) and '{page}' in value:
+                    # 特殊处理包含#page占位符的情况
+                    if isinstance(value, str) and '#page' in value:
                         pass  # 保持原值，不进行数字转换
                     else:
                         try:
@@ -270,8 +270,8 @@ class JSONEditor:
             return 'number'
         elif isinstance(value, (dict, list)):
             return 'json'
-        elif isinstance(value, str) and '{page}' in value:
-            # 如果是包含{page}占位符的字符串，且看起来像数字，则识别为number类型
+        elif isinstance(value, str) and '#page' in value:
+            # 如果是包含#page占位符的字符串，且看起来像数字，则识别为number类型
             return 'number'
         else:
             return 'string'
@@ -336,8 +336,8 @@ class KeyValueDialog:
         
         ttk.Label(value_label_frame, text="Value:").pack(side=tk.LEFT)
         ttk.Label(value_label_frame, text="快速插入:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 5))
-        ttk.Button(value_label_frame, text="{page}", 
-                  command=lambda: self.insert_text("{page}")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(value_label_frame, text="#page", 
+                  command=lambda: self.insert_text("#page")).pack(side=tk.LEFT, padx=2)
         
         # Value输入文本框
         self.value_text = scrolledtext.ScrolledText(self.value_frame, width=40, height=6)
@@ -555,9 +555,9 @@ class KeyValueDialog:
         
         # 验证值格式
         if value_type == 'number':
-            # 特殊处理包含{page}占位符的情况
-            if '{page}' in value:
-                # 如果包含{page}占位符，允许保存为字符串形式
+            # 特殊处理包含#page占位符的情况
+            if '#page' in value:
+                # 如果包含#page占位符，允许保存为字符串形式
                 pass
             else:
                 try:
