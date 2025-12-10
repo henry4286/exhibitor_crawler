@@ -8,3 +8,5 @@ __pycache__/
 .env
 config_backups/
 logs/
+build/
+dist/

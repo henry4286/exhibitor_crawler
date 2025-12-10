@@ -32,7 +32,6 @@ def ask_sync_confirmation(is_startup=True):
     """
     # 创建临时窗口用于显示对话框
     temp_root = tk.Tk()
-    temp_root.withdraw()  # 隐藏主窗口
     
     # 根据启动或关闭设置不同的消息
     if is_startup:
