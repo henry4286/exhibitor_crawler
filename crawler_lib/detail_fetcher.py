@@ -37,7 +37,6 @@ class DetailFetcher(BaseCrawler):
         """
         # 统计信息
         self._success_count = 0
-        self._fail_count = 0
 
         super().__init__(config.exhibition_code, max_workers)
         
@@ -136,9 +135,6 @@ class DetailFetcher(BaseCrawler):
         """
         results = []
         
-        print(f"📥 开始批量获取 {len(companies_basic_info)} 个公司的联系人", flush=True)
-        
-
         results_lock = threading.Lock()
         
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -172,6 +168,6 @@ class DetailFetcher(BaseCrawler):
                     company_name = basic_info.get('Company', '未知公司')
                     print(f"❌ 处理公司 {company_name} 时发生异常: {e}", flush=True)
         
-        print(f"✅ 批量获取完成，成功: {self._success_count}, 失败: {self._fail_count}", flush=True)
+        print(f"✅ 第{self.start_page}页 - 批量获取完成，成功: {self._success_count}", flush=True)
         
         return results

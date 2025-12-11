@@ -81,7 +81,7 @@ class UnifiedLogger:
     def console(self, message: str) -> None:
         """控制台输出 - 简洁信息"""
         # 直接使用print输出，确保与UI显示一致
-        print(message)
+        print(message,flush=True)
         # 同时记录到控制台日志器（用于文件记录）
         self._loggers['console'].info(message)
     
@@ -239,10 +239,6 @@ def log_page_progress(page: int, count: int) -> None:
     """爬虫：记录页面进度"""
     message = f"📄 第{page}页完成，获取到{count}条数据"
     console(message)
-    # 强制刷新标准输出，确保在UI中实时显示
-    import sys
-    sys.stdout.flush()
-
 
 def log_list_progress(page: int, company_count: int) -> None:
     """爬虫：记录公司列表获取进度"""
