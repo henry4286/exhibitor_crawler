@@ -85,8 +85,12 @@ def get_nested_value(data: Any, key_path: str) -> Any:
             if isinstance(current, dict):
                 current = current[key]
             elif isinstance(current, list):
-                index = int(key)
-                current = current[index] if index < len(current) else None
+                try:
+                    index = int(key)
+                    current = current[index] if index < len(current) else None
+                except ValueError:
+                    # 键不是数字，无法访问列表属性
+                    return ""
             else:
                 return ""
             

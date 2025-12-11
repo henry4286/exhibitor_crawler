@@ -18,7 +18,7 @@ from .utils import get_nested_value
 
 # 导入统一日志系统
 from unified_logger import (
-    console, log_error, log_info, log_warning, 
+    console, log_error, log_info, log_request, 
     log_page_progress, log_list_progress, log_contacts_saved
 )
 
@@ -200,13 +200,22 @@ class BaseCrawler:
         )
         
         # 3. 使用通用提取和解析方法
-        company_list = self._extract_and_parse(
-            response_data=response_data,
-            items_key=self.config.items_key,
-            field_mapping=self.config.company_info_keys,
-        )
-        
-        return company_list
+        try:
+            company_list = self._extract_and_parse(
+                response_data=response_data,
+                items_key=self.config.items_key,
+                field_mapping=self.config.company_info_keys,
+            )
+            
+            return company_list
+        except Exception as e:
+            
+            log_request(url=str(self.config.url),
+            params=params_str,
+            data=data_str,
+            response=response_data)
+            
+            raise RuntimeError(f"解析第{page}页数据失败: {e}") from e
     
     def _is_same_data(self, data1: list[dict], data2: list[dict]) -> bool:
         """
@@ -259,12 +268,28 @@ class BaseCrawler:
         """
         self._total_companies = 0
         self._total_pages = 0
+    
+    def _print_summary(self):
+        """
+        打印爬取汇总信息
+        """
+        console("\n" + "="*60)
+        console("📊 爬取汇总")
+        console("="*60)
+        console(f"展会代码: {self.exhibition_code}")
+        console(f"总页数: {self._total_pages}")
+        console(f"总数据条数: {self._total_companies}")
+        console("="*60 + "\n")
 
     def _count_consecutive_empty(self, sorted_pages: list, batch_results: Dict[int, list]) -> int:
         """计算从批次末尾开始连续空页的数量"""
         cnt = 0
         for p in reversed(sorted_pages):
-            if not batch_results.get(p):
+            # 仅把明确的空列表算作空页；失败页(None)不计为“空”，但会中断连续计数
+            val = batch_results.get(p)
+            if val is None:
+                break
+            if val == []:
                 cnt += 1
             else:
                 break
@@ -272,23 +297,35 @@ class BaseCrawler:
 
     def _is_entire_batch_empty(self, batch_results: Dict[int, list]) -> bool:
         """判断整批数据是否全部为空"""
-        return all(not v for v in batch_results.values())
+        # 只有当至少存在一个成功返回的列表，并且所有成功返回的列表均为空时，才认为整批为空。
+        has_list_result = False
+        for v in batch_results.values():
+            if v is None:
+                # 忽略失败页
+                continue
+            has_list_result = True
+            if v:  # 非空列表
+                return False
+        return has_list_result
 
     def _detect_no_pagination(self, sorted_pages: list, batch_results: Dict[int, list]) -> bool:
         """检测批次内是否存在无翻页（相邻页数据相同）的迹象"""
         if len(sorted_pages) < 2:
             return False
         first, second = sorted_pages[0], sorted_pages[1]
-        if batch_results.get(first) and batch_results.get(second):
-            return self._is_same_data(batch_results[first], batch_results[second])
+        # 仅在两个页都为非空的列表时比较数据相同
+        v1 = batch_results.get(first)
+        v2 = batch_results.get(second)
+        if isinstance(v1, list) and isinstance(v2, list) and v1 and v2:
+            return self._is_same_data(v1, v2)
         return False
 
     def paginate_batches(
         self,
         start_page: int,
-        batch_size: int,
-        max_consecutive_empty: int,
-        process_batch_callback
+        process_batch_callback,
+        batch_size: int=4,
+        max_consecutive_empty: int=3
     ) -> bool:
         """
         批量并行分页引擎：负责并行抓取一批页面、统一停止判定，并把批次结果交给回调处理。
@@ -299,11 +336,12 @@ class BaseCrawler:
         has_data = False
         current_batch_start = start_page
 
-        while True:
-            batch_end = current_batch_start + batch_size - 1
-            batch_results: Dict[int, list] = {}
+        # 使用单个线程池复用线程资源，保证总并发为 self.max_workers
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            while True:
+                batch_end = current_batch_start + batch_size - 1
+                batch_results: Dict[int, list] = {}
 
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_page = {
                     executor.submit(self.crawl_page, page): page
                     for page in range(current_batch_start, batch_end + 1)
@@ -318,33 +356,34 @@ class BaseCrawler:
                             has_data = True
                     except Exception as e:
                         log_error(f"处理第{page}页时发生错误", e)
-                        batch_results[page] = []
+                        # 区分失败页与空页，失败页使用 None 标记
+                        batch_results[page] = None
 
-            sorted_pages = sorted(batch_results.keys())
+                sorted_pages = sorted(batch_results.keys())
 
-            # 停止条件
-            if self._count_consecutive_empty(sorted_pages, batch_results) >= max_consecutive_empty:
-                log_info(f"检测到连续{max_consecutive_empty}页无数据，停止爬取")
-                break
-
-            if self._is_entire_batch_empty(batch_results):
-                log_info("整批数据都为空，停止爬取")
-                break
-
-            if self._detect_no_pagination(sorted_pages, batch_results):
-                log_info("检测到疑似无翻页API，停止爬取")
-                break
-
-            # 交给回调处理批次结果
-            try:
-                cont = process_batch_callback(batch_results)
-                if cont is False:
+                # 交给回调处理批次结果
+                try:
+                    cont = process_batch_callback(batch_results)
+                    if cont is False:
+                        break
+                except Exception as e:
+                    log_error("处理批次回调时出错", e)
                     break
-            except Exception as e:
-                log_error("处理批次回调时出错", e)
-                break
 
-            current_batch_start = batch_end + 1
+                # 停止条件
+                if self._count_consecutive_empty(sorted_pages, batch_results) >= max_consecutive_empty:
+                    log_info(f"检测到连续{max_consecutive_empty}页无数据，停止爬取")
+                    break
+
+                if self._is_entire_batch_empty(batch_results):
+                    log_info("整批数据都为空，停止爬取")
+                    break
+
+                if self._detect_no_pagination(sorted_pages, batch_results):
+                    log_info("检测到疑似无翻页API，停止爬取")
+                    break
+
+                current_batch_start = batch_end + 1
 
         return has_data
 
@@ -392,7 +431,6 @@ class BaseCrawler:
 
         return has_data
     
-    # 注意：_make_request 和 _extract_and_parse 方法已从 RequestMixin 继承
     
     def crawl(self) -> bool:
         """
@@ -432,14 +470,20 @@ class CompanyCrawler(BaseCrawler):
             return False
 
         headers = list(self.config.company_info_keys.keys())
-        batch_size = 10
-        max_consecutive_empty = 3
 
         def _process_batch(batch_results: Dict[int, list]):
             # 按页顺序保存数据并更新统计
             sorted_pages = sorted(batch_results.keys())
+            failed_pages = []
             for page in sorted_pages:
-                company_list = batch_results.get(page) or []
+                val = batch_results.get(page)
+                if val is None:
+                    # 该页在抓取或解析阶段失败，记录以便后续重试或转储
+                    log_error(f"第{page}页抓取/解析失败，已跳过（建议重试或查看 dump）")
+                    failed_pages.append(page)
+                    continue
+
+                company_list = val or []
                 if company_list:
                     try:
                         self.exporter.save(company_list, self.exhibition_code, headers)
@@ -455,8 +499,6 @@ class CompanyCrawler(BaseCrawler):
 
         return self.paginate_batches(
             start_page=self.start_page,
-            batch_size=batch_size,
-            max_consecutive_empty=max_consecutive_empty,
             process_batch_callback=_process_batch
         )
     
@@ -477,6 +519,10 @@ class CompanyCrawler(BaseCrawler):
             
             # 执行爬取
             has_data = self.crawl_parallel()
+            
+            # 显示汇总信息
+            if has_data:
+                self._print_summary()
             
             return has_data
             
@@ -518,6 +564,19 @@ class DoubleFetchCrawler(BaseCrawler):
         # 二次请求模式的额外统计
         self._total_contacts = 0
     
+    def _print_double_summary(self):
+        """
+        打印二次请求爬取汇总信息
+        """
+        console("\n" + "="*60)
+        console("📊 爬取汇总")
+        console("="*60)
+        console(f"展会代码: {self.exhibition_code}")
+        console(f"总页数: {self._total_pages}")
+        console(f"总公司数: {self._total_companies}")
+        console(f"总联系人数: {self._total_contacts}")
+        console("="*60 + "\n")
+    
     def crawl(self) -> bool:
         """
         执行爬取流程（二次请求模式 - 逐页处理）
@@ -553,6 +612,7 @@ class DoubleFetchCrawler(BaseCrawler):
 
             # 更新公司数统计（保持原行为）
             self._total_companies += len(items)
+            self._total_pages += 1
 
             # 继续分页默认
             return True
@@ -560,12 +620,19 @@ class DoubleFetchCrawler(BaseCrawler):
         try:
             # 删除旧文件（如果从第一页开始）
             self._delete_old_file_if_needed()
+            
+            # 重置统计信息
+            self._reset_stats()
 
             has_data = self.paginate_sequential(
                 start_page=self.start_page,
                 max_consecutive_empty=3,
                 process_page_callback=_process_page
             )
+            
+            # 显示汇总信息
+            if has_data:
+                self._print_double_summary()
 
             return has_data
 

@@ -10,15 +10,38 @@
 import logging
 import json
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from logging.handlers import RotatingFileHandler
+
+
+class UILogHandler(logging.Handler):
+    """自定义日志处理器 - 将日志消息送到UI界面"""
+    
+    def __init__(self, callback: Callable[[str], None]):
+        """
+        初始化UI日志处理器
+        
+        Args:
+            callback: 接收日志消息的回调函数
+        """
+        super().__init__()
+        self.callback = callback
+    
+    def emit(self, record: logging.LogRecord):
+        """发出日志记录到UI"""
+        try:
+            msg = self.format(record)
+            self.callback(msg)
+        except Exception:
+            self.handleError(record)
 
 
 class UnifiedLogger:
     """统一日志记录器"""
     
-    def __init__(self):
+    def __init__(self, ui_log_callback: Optional[Callable[[str], None]] = None):
         self._loggers = {}
+        self._ui_log_callback = ui_log_callback
         self._setup_loggers()
     
     def _setup_loggers(self):
@@ -29,10 +52,19 @@ class UnifiedLogger:
         # 1. 控制台日志记录器 - 简洁输出
         console_logger = logging.getLogger('console')
         if not console_logger.handlers:
+            # 添加流处理器（终端输出）
             console_handler = logging.StreamHandler()
             console_handler.setLevel(logging.INFO)
             console_handler.setFormatter(logging.Formatter('%(message)s'))
             console_logger.addHandler(console_handler)
+            
+            # 如果提供了UI回调，添加UI处理器
+            if self._ui_log_callback:
+                ui_handler = UILogHandler(self._ui_log_callback)
+                ui_handler.setLevel(logging.INFO)
+                ui_handler.setFormatter(logging.Formatter('%(message)s'))
+                console_logger.addHandler(ui_handler)
+            
             console_logger.setLevel(logging.INFO)
             console_logger.propagate = False
         self._loggers['console'] = console_logger
@@ -80,10 +112,24 @@ class UnifiedLogger:
     # ========== 控制台输出 ==========
     def console(self, message: str) -> None:
         """控制台输出 - 简洁信息"""
-        # 直接使用print输出，确保与UI显示一致
-        print(message,flush=True)
-        # 同时记录到控制台日志器（用于文件记录）
+        # 通过logging记录，由StreamHandler负责终端输出，UILogHandler负责UI回调
         self._loggers['console'].info(message)
+
+    def add_ui_callback(self, callback: Callable[[str], None]) -> None:
+        """添加或注册一个UI回调，用于在运行时将日志推送到UI。
+
+        会避免重复添加相同回调的处理器。
+        """
+        console_logger = logging.getLogger('console')
+        # 检查是否已经存在相同回调的UILogHandler
+        for h in console_logger.handlers:
+            if isinstance(h, UILogHandler) and getattr(h, 'callback', None) is callback:
+                return
+
+        ui_handler = UILogHandler(callback)
+        ui_handler.setLevel(logging.INFO)
+        ui_handler.setFormatter(logging.Formatter('%(message)s'))
+        console_logger.addHandler(ui_handler)
     
     # ========== 请求日志 ==========
     def log_request(self, url: str, method: str = 'GET', 
@@ -163,11 +209,25 @@ class UnifiedLogger:
 # 全局单例
 _logger = None
 
-def get_logger() -> UnifiedLogger:
-    """获取日志记录器实例"""
+def get_logger(ui_log_callback: Optional[Callable[[str], None]] = None) -> UnifiedLogger:
+    """获取日志记录器实例
+    
+    Args:
+        ui_log_callback: 可选的UI日志回调函数，用于将日志显示在UI中
+    
+    Returns:
+        UnifiedLogger: 日志记录器实例
+    """
     global _logger
     if _logger is None:
-        _logger = UnifiedLogger()
+        _logger = UnifiedLogger(ui_log_callback)
+    else:
+        # 如果已经存在logger，但提供了UI回调，则在运行时注册回调（避免重复添加）
+        if ui_log_callback is not None:
+            try:
+                _logger.add_ui_callback(ui_log_callback)
+            except Exception:
+                pass
     return _logger
 
 
@@ -178,92 +238,268 @@ def console(message: str) -> None:
     get_logger().console(message)
 
 
+def _emit_console_skip_ui(message: str) -> None:
+    """内部：直接把消息发送给 `console` logger 的非-UI handlers（跳过 UILogHandler）。
+
+    该函数用于在需要只在终端输出但不推送到UI时使用。
+    """
+    console_logger = logging.getLogger('console')
+    try:
+        record = console_logger.makeRecord(console_logger.name, logging.INFO, '', 0, message, args=(), exc_info=None, func=None, extra=None)
+    except Exception:
+        record = logging.LogRecord(console_logger.name, logging.INFO, '', 0, message, None, None)
+
+    for h in list(console_logger.handlers):
+        if isinstance(h, UILogHandler):
+            continue
+        try:
+            h.handle(record)
+        except Exception:
+            try:
+                h.emit(record)
+            except Exception:
+                pass
+
+
 def log_request(url: str, method: str = 'GET',
-               params: Optional[Dict[str, Any]] = None,
+               params: Any= None,
                data: Any = None,
                response: Any = None) -> None:
     """记录请求"""
     get_logger().log_request(url, method, params, data, response)
 
 
-def log_error(message: str, exception: Optional[Exception] = None) -> None:
-    """记录错误"""
-    get_logger().log_error(message, exception)
+def log_error(message: str, exception: Optional[Exception] = None, ui: bool = True) -> None:
+    """记录错误（写入错误日志，控制是否发送到UI）
+
+    Args:
+        message: 错误消息
+        exception: 可选异常对象，用于写入详细错误信息到文件
+        ui: 是否也发送简化错误消息到UI（默认 True）
+    """
+    # 始终写入错误日志文件
+    if exception:
+        error_detail = f"{message} | 异常: {type(exception).__name__}: {str(exception)}"
+        get_logger()._loggers['error'].error(error_detail)
+    else:
+        get_logger()._loggers['error'].error(message)
+
+    # 简化信息是否显示到UI/终端
+    simple_msg = f"❌ 错误: {message}"
+    if ui:
+        console(simple_msg)
+    else:
+        _emit_console_skip_ui(simple_msg)
 
 
-def log_exception(message: str) -> None:
-    """记录异常"""
+def log_exception(message: str, ui: bool = True) -> None:
+    """记录异常（包含堆栈信息），并可选是否发送简化信息到UI
+
+    Args:
+        message: 异常消息描述
+        ui: 是否也发送简化异常信息到UI（默认 True）
+    """
+    # 记录完整堆栈到错误日志
     get_logger().log_exception(message)
+
+    # 简化信息推送到UI或仅终端
+    simple_msg = f"❌ 异常: {message}"
+    if ui:
+        console(simple_msg)
+    else:
+        _emit_console_skip_ui(simple_msg)
 
 
 # ========== 兼容旧代码的函数 ==========
 
-def log_info(message: str) -> None:
-    """兼容：记录信息（仅控制台）"""
-    console(message)
+def log_info(message: str, ui: bool = True) -> None:
+    """兼容：记录信息（控制台总是输出，UI 可选）
+
+    Args:
+        message: 要记录的消息
+        ui: 是否也将消息发送到UI回调（默认: True）。
+            为 False 时，消息只会发送到非-UI 的 handlers（例如终端 StreamHandler）。
+    """
+    if ui:
+        console(message)
+        return
+
+    # ui is False -> emit to console logger but skip UILogHandler
+    console_logger = logging.getLogger('console')
+    try:
+        record = console_logger.makeRecord(console_logger.name, logging.INFO, '', 0, message, args=(), exc_info=None, func=None, extra=None)
+    except Exception:
+        record = logging.LogRecord(console_logger.name, logging.INFO, '', 0, message, None, None)
+
+    for h in list(console_logger.handlers):
+        if isinstance(h, UILogHandler):
+            continue
+        try:
+            h.handle(record)
+        except Exception:
+            try:
+                h.emit(record)
+            except Exception:
+                pass
 
 
-def log_warning(message: str) -> None:
-    """兼容：记录警告（控制台+错误日志）"""
-    console(f"⚠️  警告: {message}")
+def log_warning(message: str, ui: bool = True) -> None:
+    """兼容：记录警告（控制台+错误日志）
+
+    Args:
+        message: 警告消息
+        ui: 是否也发送到UI（默认 True）
+    """
+    if ui:
+        console(f"⚠️  警告: {message}")
+    else:
+        _emit_console_skip_ui(f"⚠️  警告: {message}")
     get_logger()._loggers['error'].warning(message)
 
 
-def log_startup_info(app_name: str, version: Optional[str] = None) -> None:
-    """兼容：记录启动信息"""
+# (old single-arg log_warning removed; new version with ui parameter is above)
+
+
+def log_startup_info(app_name: str, version: Optional[str] = None, ui: bool = True) -> None:
+    """兼容：记录启动信息
+
+    Args:
+        app_name: 应用名称
+        version: 可选版本
+        ui: 是否也发送到UI（默认 True）
+    """
     message = f"🚀 启动 {app_name}"
     if version:
         message += f" {version}"
-    console(message)
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
-def log_shutdown_info(app_name: str, runtime: Optional[str] = None) -> None:
-    """兼容：记录关闭信息"""
+def log_shutdown_info(app_name: str, runtime: Optional[str] = None, ui: bool = True) -> None:
+    """兼容：记录关闭信息
+
+    Args:
+        app_name: 应用名称
+        runtime: 可选运行时间字符串
+        ui: 是否也发送到UI（默认 True）
+    """
     message = f"👋 关闭 {app_name}"
     if runtime:
         message += f" (运行时间: {runtime})"
-    console(message)
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
-def log_import_error(module_name: str, solution: Optional[str] = None) -> None:
-    """兼容：记录导入错误"""
+def log_import_error(module_name: str, solution: Optional[str] = None, ui: bool = True) -> None:
+    """兼容：记录导入错误
+
+    Args:
+        module_name: 模块名
+        solution: 可选解决方案描述
+        ui: 是否也发送到UI（默认 True）
+    """
     message = f"导入模块失败: {module_name}"
     if solution:
         message += f" - {solution}"
-    log_error(message)
+    # 错误级别也写入错误日志
+    get_logger()._loggers['error'].error(message)
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
 # ========== 爬虫专用函数 ==========
 
-def log_page_progress(page: int, count: int) -> None:
-    """爬虫：记录页面进度"""
+def log_page_progress(page: int, count: int, ui: bool = True) -> None:
+    """爬虫：记录页面进度
+
+    Args:
+        page: 页码
+        count: 本页获取到的数据条数
+        ui: 是否也发送到UI（默认 True）
+    """
     message = f"📄 第{page}页完成，获取到{count}条数据"
-    console(message)
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
-def log_list_progress(page: int, company_count: int) -> None:
-    """爬虫：记录公司列表获取进度"""
-    console(f"📄 第{page}页 - 获取公司列表：{company_count}个")
+def log_list_progress(page: int, company_count: int, ui: bool = True) -> None:
+    """爬虫：记录公司列表获取进度
+
+    Args:
+        page: 页码
+        company_count: 本页公司数量
+        ui: 是否也发送到UI（默认 True）
+    """
+    message = f"📄 第{page}页 - 获取公司列表：{company_count}个"
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
-def log_contacts_saved(page: int, contact_count: int) -> None:
-    """爬虫：记录联系人保存进度"""
-    console(f"💾 第{page}页 - 已保存{contact_count}条联系人")
+def log_contacts_saved(page: int, contact_count: int, ui: bool = True) -> None:
+    """爬虫：记录联系人保存进度
+
+    Args:
+        page: 页码
+        contact_count: 已保存联系人数量
+        ui: 是否也发送到UI（默认 True）
+    """
+    message = f"💾 第{page}页 - 已保存{contact_count}条联系人"
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
 # ========== UI相关函数 ==========
 
-def log_config_error(config_file: str, error_detail: str) -> None:
-    """UI：记录配置错误"""
-    log_error(f"配置文件错误 [{config_file}]: {error_detail}")
+def log_config_error(config_file: str, error_detail: str, ui: bool = True) -> None:
+    """UI：记录配置错误
+
+    Args:
+        config_file: 配置文件路径或名称
+        error_detail: 错误详情
+        ui: 是否也发送到UI（默认 True）
+    """
+    message = f"配置文件错误 [{config_file}]: {error_detail}"
+    get_logger()._loggers['error'].error(message)
+    if ui:
+        console(message)
+    else:
+        _emit_console_skip_ui(message)
 
 
 def log_file_operation(operation: str, file_path: str, 
-                      success: bool = True, error: Optional[str] = None) -> None:
-    """UI：记录文件操作"""
+                      success: bool = True, error: Optional[str] = None, ui: bool = True) -> None:
+    """UI：记录文件操作
+
+    Args:
+        operation: 操作名称
+        file_path: 文件路径
+        success: 是否成功
+        error: 错误信息（如果有）
+        ui: 是否也发送到UI（默认 True）
+    """
     if success:
-        console(f"✅ {operation}: {file_path}")
+        if ui:
+            console(f"✅ {operation}: {file_path}")
+        else:
+            _emit_console_skip_ui(f"✅ {operation}: {file_path}")
     else:
-        log_error(f"{operation}失败: {file_path} - {error}")
+        message = f"{operation}失败: {file_path} - {error}"
+        get_logger()._loggers['error'].error(message)
+        if ui:
+            console(message)
+        else:
+            _emit_console_skip_ui(message)
 
 
 if __name__ == "__main__":

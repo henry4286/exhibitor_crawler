@@ -11,6 +11,9 @@ import threading
 import datetime
 import pandas as pd
 
+# 导入日志系统
+from unified_logger import get_logger
+
 
 class RunConfigTab:
     """运行配置标签页"""
@@ -21,7 +24,11 @@ class RunConfigTab:
         self.is_running = False
         self.current_process = None
         self._line_buffer = ''  # 初始化行缓冲区
+        self.log_text = None  # 先初始化为None，在create_tab中赋值
         self.create_tab()
+        
+        # 创建日志显示后，初始化日志系统的UI回调
+        self._init_logger_ui_callback()
     
     def create_tab(self):
         """创建运行配置页面"""
@@ -85,6 +92,18 @@ class RunConfigTab:
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
     
+    def _init_logger_ui_callback(self):
+        """初始化日志系统的UI回调，将日志输出到UI窗口"""
+        def log_callback(message: str):
+            """日志回调函数"""
+            if self.log_text:
+                self.log_text.insert('end', f"{message}\n")
+                self.log_text.see('end')  # 自动滚动到底部
+                self.config_editor.root.update_idletasks()  # 实时更新UI
+        
+        # 重新初始化日志系统，传入UI回调
+        get_logger(ui_log_callback=log_callback)
+    
     def update_current_exhibition(self):
         """更新当前选中的展会信息"""
         current_row = self.config_editor.current_row
@@ -109,14 +128,10 @@ class RunConfigTab:
         """添加日志消息 - 保持与终端完全一致的显示"""
         # 直接输出原始消息，不添加额外时间戳
         log_line = message
-        
-        # 输出到GUI日志窗口
-        self.log_text.insert(tk.END, f"{log_line}\n")
-        self.log_text.see(tk.END)
-        self.config_editor.root.update_idletasks()
-        
-        # 同时输出到终端控制台（保持一致）
-        print(log_line)
+
+        # 统一通过日志系统输出：StreamHandler 输出终端，UILogHandler 负责把消息回调到 UI
+        from unified_logger import console
+        console(log_line)
     
     def clear_log(self):
         """清空日志"""
@@ -149,7 +164,7 @@ class RunConfigTab:
         
         try:
             start_page = int(self.start_page_var.get())
-            if start_page < 1:
+            if start_page < 0:
                 self.config_editor.show_error("起始页码必须大于0")
                 return
         except ValueError:
@@ -189,9 +204,9 @@ class RunConfigTab:
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,  # 单独捕获stderr，不合并到stdout
+                    stderr=subprocess.STDOUT,  # 将stderr合并到stdout，确保日志(默认写stderr)被捕获
                     text=True,
-                    bufsize=0,  # 无缓冲，实时输出
+                    bufsize=1,  # 行缓冲，便于逐行读取
                     universal_newlines=True,
                     encoding='utf-8',
                     errors='replace'
@@ -282,7 +297,6 @@ class RunConfigTab:
         # 清空日志并初始化
         self.clear_log()
         self.log_message(f"正在初始化配置测试...")
-        self.log_message(f"目标展会: {exhibition_code}")
         
         # 启动测试
         self.is_running = True
@@ -302,7 +316,7 @@ class RunConfigTab:
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,  # 单独捕获stderr，过滤日志错误
+                    stderr=subprocess.STDOUT,  # 合并stderr到stdout，确保日志输出被捕获
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
