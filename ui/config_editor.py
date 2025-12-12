@@ -1,14 +1,13 @@
 """
 配置文件图形化编辑器主模块
 
-提供配置文件的主要编辑功能
+提供配置文件的主要编辑功能 - JSON版本
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox
 import json
 import os
-import pandas as pd
 import traceback
 import threading
 from typing import Optional, Dict, Any, List
@@ -17,8 +16,8 @@ from .basic_config_tab import BasicConfigTab
 from .advanced_config_tab import AdvancedConfigTab
 from .run_config_tab import RunConfigTab
 
-# 导入Git同步模块
-from git_sync import SimpleGitSync
+# 导入Gitee同步模块
+from gitee_sync import GiteeSync
 
 # 导入新的日志系统
 from unified_logger import log_info, log_warning, log_error, log_exception, log_config_error, log_file_operation
@@ -32,21 +31,21 @@ class ConfigUIEditor:
         self.root.title("爬虫配置文件编辑器")
         self.root.geometry("1200x800")
         
-        # 配置文件路径
-        self.config_path = 'config.xlsx'
+        # 配置文件目录
+        self.config_dir = 'config'
+        self.index_file = os.path.join(self.config_dir, 'index.json')
         
         # 数据存储
-        self.df = None
-        self.current_row = None
+        self.config_files = {}  # 文件名到配置数据的映射
+        self.current_file = None  # 当前编辑的文件名
         
         # 文件修改追踪标志
         self._file_modified = False
-        self._local_config_hash = None  # 用于追踪文件变化
+        self._local_config_hashes = {}  # 用于追踪文件变化
         
         # 初始化界面
         self.setup_ui()
-        self.load_config()
-        self._update_file_hash()  # 加载后记录当前文件哈希
+        self.load_configs()
         
         # 绑定窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -105,8 +104,8 @@ class ConfigUIEditor:
         left_frame.columnconfigure(0, weight=1)
         left_frame.rowconfigure(1, weight=1)
         
-        # 存储过滤后的索引映射
-        self.filtered_indices = []
+        # 存储过滤后的文件名列表
+        self.filtered_files = []
         
         # 右侧：配置详情
         right_frame = ttk.Frame(main_frame)
@@ -143,52 +142,65 @@ class ConfigUIEditor:
             search_text = self.search_var.get().strip().lower()
         
         self.listbox.delete(0, tk.END)
-        self.filtered_indices = []
+        self.filtered_files = []
         
-        if self.df is None or len(self.df) == 0:
+        if not self.config_files:
             return
         
-        for idx, row in self.df.iterrows():
+        for filename, config_data in self.config_files.items():
             # 获取搜索字段
-            exhibition_code = str(row.get('exhibition_code', '')).lower()
-            miniprogram_name = str(row.get('miniprogram_name', '')).lower()
-            url = str(row.get('url', '')).lower()
+            exhibition_code = config_data.get('exhibition_code', '').lower()
+            miniprogram_name = config_data.get('miniprogram_name', '').lower()
+            url = config_data.get('url', '').lower()
             
             # 如果搜索文本为空，显示所有；否则匹配搜索条件
             if not search_text or (search_text in exhibition_code or 
                                     search_text in miniprogram_name or 
                                     search_text in url):
-                display_text = f"{row['exhibition_code']} ({row.get('request_mode', 'single')})"
+                display_text = f"{config_data['exhibition_code']} ({config_data.get('request_mode', 'single')})"
                 self.listbox.insert(tk.END, display_text)
-                self.filtered_indices.append(idx)
+                self.filtered_files.append(filename)
     
-    def load_config(self):
-        """加载配置文件"""
+    def load_configs(self):
+        """加载所有JSON配置文件"""
         try:
-            if not os.path.exists(self.config_path):
-                error_msg = f"配置文件不存在: {self.config_path}"
-                log_config_error(self.config_path, error_msg)
+            if not os.path.exists(self.config_dir):
+                error_msg = f"配置目录不存在: {self.config_dir}"
+                log_config_error(self.config_dir, error_msg)
                 messagebox.showerror("错误", error_msg)
                 return
             
-            self.df = pd.read_excel(self.config_path)
-            # 更新列表框（应用当前搜索条件）
+            # 清空现有配置
+            self.config_files.clear()
+            
+            # 加载所有JSON文件（除了index.json）
+            for filename in os.listdir(self.config_dir):
+                if filename.endswith('.json') and filename != 'index.json':
+                    file_path = os.path.join(self.config_dir, filename)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            config_data = json.load(f)
+                        self.config_files[filename] = config_data
+                        # 记录文件哈希
+                        self._local_config_hashes[filename] = self._get_file_hash(file_path)
+                    except Exception as e:
+                        log_warning(f"加载配置文件失败 {filename}: {e}")
+                        continue
+            
+            # 更新列表框
             self.update_listbox()
             
             # 清空输入框
             self.clear_fields()
             
-            config_count = len(self.df) if self.df is not None else 0
+            config_count = len(self.config_files)
             success_msg = f"已加载配置文件，共 {config_count} 个配置"
-            log_info(success_msg,False)
-            # 去掉弹窗提示，只在日志中记录
-            # self.show_info(success_msg)
+            log_info(success_msg, False)
             
         except Exception as e:
             error_msg = f"加载配置文件失败: {e}"
             log_exception(error_msg)
             messagebox.showerror("错误", error_msg)
-            self.df = None
     
     def clear_fields(self):
         """清空所有输入框"""
@@ -200,7 +212,7 @@ class ConfigUIEditor:
         for field, widget in self.advanced_fields.items():
             self._clear_widget(widget)
         
-        self.current_row = None
+        self.current_file = None
     
     def _clear_widget(self, widget):
         """清空单个控件"""
@@ -214,7 +226,6 @@ class ConfigUIEditor:
             elif hasattr(widget, 'set'):  # Combobox or other settable widget
                 widget.set('')
         except Exception as e:
-            # 忽略清空控件时的错误，避免程序崩溃
             log_warning(f"清空控件时发生错误: {e}")
     
     def on_list_select(self, event):
@@ -224,70 +235,74 @@ class ConfigUIEditor:
             return
         
         listbox_index = selection[0]
-        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+        if not self.filtered_files or listbox_index >= len(self.filtered_files):
             return
         
-        # 使用过滤后的索引映射获取实际数据框索引
-        actual_index = self.filtered_indices[listbox_index]
-        if self.df is None or actual_index >= len(self.df):
+        # 获取选中的文件名
+        filename = self.filtered_files[listbox_index]
+        if filename not in self.config_files:
             return
         
-        row = self.df.iloc[actual_index]
-        self.current_row = actual_index
+        config_data = self.config_files[filename]
+        self.current_file = filename
         
         # 填充基本配置字段
-        self._fill_fields(self.basic_fields, row)
+        self._fill_fields(self.basic_fields, config_data)
         
         # 填充二次请求配置字段
-        self._fill_fields(self.advanced_fields, row)
+        self._fill_fields(self.advanced_fields, config_data)
         
         # 更新运行配置页面的当前展会信息
         self.run_tab.update_current_exhibition()
     
-    def _fill_fields(self, fields_dict, row):
+    def _fill_fields(self, fields_dict, config_data):
         """填充字段数据"""
         for field, widget in fields_dict.items():
-            value = row.get(field, '')
+            value = config_data.get(field, '')
             self._set_widget_value(widget, value)
     
     def _set_widget_value(self, widget, value):
         """设置控件的值"""
         try:
             if hasattr(widget, 'set_json_string'):  # JSONEditor
-                widget.set_json_string(str(value) if pd.notna(value) else '')
+                if isinstance(value, (dict, list)):
+                    # 对于复杂数据类型，使用JSON格式
+                    widget.set_json_string(json.dumps(value, ensure_ascii=False, indent=2))
+                else:
+                    widget.set_json_string(str(value) if value else '')
             elif isinstance(widget, tk.Text) or hasattr(widget, 'tag_add'):  # Text widget
                 widget.delete('1.0', tk.END)
-                widget.insert('1.0', str(value) if pd.notna(value) else '')
-            elif isinstance(widget, ttk.Combobox):  # Combobox - 必须在Entry之前检查，因为Combobox也有delete和insert
-                # 处理下拉框控件
+                widget.insert('1.0', str(value) if value else '')
+            elif isinstance(widget, ttk.Combobox):  # Combobox
                 values = widget.cget('values')
-                value_str = str(value).strip() if pd.notna(value) and value != '' else ''
+                value_str = str(value).strip() if value else ''
                 
-                # 如果值有效且在选项列表中，设置该值
                 if value_str and value_str in values:
                     widget.set(value_str)
-                elif values:  # 如果值为空或不在选项列表中，设置第一个为默认值
+                elif values:
                     widget.set(values[0])
                 else:
                     widget.set('')
             elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):  # Entry widget
                 widget.delete(0, tk.END)
-                widget.insert(0, str(value) if pd.notna(value) else '')
+                widget.insert(0, str(value) if value else '')
             elif hasattr(widget, 'set'):  # Other settable widget
-                widget.set(str(value) if pd.notna(value) else '')
+                widget.set(str(value) if value else '')
         except Exception as e:
-            # 忽略设置控件值时的错误，避免程序崩溃
-            log_warning(f"设置控件值时发生错误: {e}, widget类型: {type(widget).__name__}, 值: {value}")
+            log_warning(f"设置控件值时发生错误: {e}")
     
     def get_field_value(self, widget):
         """获取字段值"""
         try:
             if hasattr(widget, 'get_json_string'):  # JSONEditor
                 value = widget.get_json_string()
-                if not value.strip():
-                    # JSON字段如果为空，返回空的JSON对象
-                    return '{}'
-                return value
+                if not value or not value.strip():
+                    return {}
+                # 尝试解析为JSON，如果失败则返回原始字符串
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return value
             elif isinstance(widget, tk.Text) or hasattr(widget, 'tag_add'):  # Text widget
                 value = widget.get('1.0', tk.END).strip()
                 return value if value.strip() else None
@@ -297,20 +312,30 @@ class ConfigUIEditor:
             else:
                 return None
         except Exception as e:
-            # 忽略获取控件值时的错误，返回None
             log_warning(f"获取控件值时发生错误: {e}")
             return None
     
-    def validate_json(self, json_str):
+    def validate_json(self, json_data):
         """验证JSON格式"""
-        if not json_str.strip():
+        if not json_data:
             return True, ""
         
-        try:
-            json.loads(json_str)
+        # 如果已经是字典或列表，说明是有效的
+        if isinstance(json_data, (dict, list)):
             return True, ""
-        except json.JSONDecodeError as e:
-            return False, str(e)
+        
+        # 如果是字符串，尝试解析
+        if isinstance(json_data, str):
+            if not json_data.strip():
+                return True, ""
+            try:
+                json.loads(json_data)
+                return True, ""
+            except json.JSONDecodeError as e:
+                return False, str(e)
+        
+        # 其他类型认为无效
+        return False, f"无效的JSON数据类型: {type(json_data)}"
     
     def validate_config(self):
         """验证配置"""
@@ -320,16 +345,16 @@ class ConfigUIEditor:
             return False, "展会代码不能为空"
         
         # 检查展会代码是否重复（新增时）
-        if self.current_row is None and self.df is not None:
-            if exhibition_code in self.df['exhibition_code'].values:
-                return False, f"展会代码 '{exhibition_code}' 已存在"
+        filename = f"{exhibition_code}.json"
+        if self.current_file is None and filename in self.config_files:
+            return False, f"展会代码 '{exhibition_code}' 已存在"
         
         # 获取URL
         url = self.get_field_value(self.basic_fields['url'])
         if not url:
             return False, "API地址不能为空"
         
-        # 验证JSON字段（排除items_key，因为它是字符串）
+        # 验证JSON字段
         json_fields = ['headers', 'params', 'data', 'company_info_keys']
         for field in json_fields:
             value = self.get_field_value(self.basic_fields[field])
@@ -341,16 +366,13 @@ class ConfigUIEditor:
         # 如果是double模式，验证二次请求字段
         request_mode = self.get_field_value(self.basic_fields['request_mode'])
         if request_mode == 'double':
-            # 验证必需的二次请求字段
             url_detail = self.get_field_value(self.advanced_fields['url_detail'])
             if not url_detail:
                 return False, "二次请求模式下，详情API地址不能为空"
             
-            # 验证基本配置中是否包含ID和Company字段映射
             company_info_keys_value = self.get_field_value(self.basic_fields['company_info_keys'])
             if company_info_keys_value:
                 try:
-                    import json
                     company_info_keys = json.loads(company_info_keys_value)
                     if 'ID' not in company_info_keys:
                         return False, "二次请求模式下，基本配置的字段映射中必须包含'ID'字段"
@@ -358,8 +380,6 @@ class ConfigUIEditor:
                         return False, "二次请求模式下，基本配置的字段映射中必须包含'Company'字段"
                 except json.JSONDecodeError:
                     return False, "基本配置的字段映射JSON格式错误"
-            else:
-                return False, "二次请求模式下，基本配置的字段映射不能为空"
             
             # 验证二次请求的JSON字段
             json_fields = ['headers_detail', 'params_detail', 'data_detail', 'info_key']
@@ -381,8 +401,8 @@ class ConfigUIEditor:
         self.basic_tab.set_default_values()
         self.advanced_tab.set_default_values()
         
-        # 设置当前行为None，表示新增
-        self.current_row = None
+        # 设置当前文件为None，表示新增
+        self.current_file = None
         
         self.show_info("请填写配置信息，然后点击保存")
     
@@ -394,32 +414,31 @@ class ConfigUIEditor:
             return
         
         listbox_index = selection[0]
-        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+        if not self.filtered_files or listbox_index >= len(self.filtered_files):
             return
         
-        actual_index = self.filtered_indices[listbox_index]
-        if self.df is None or actual_index >= len(self.df):
+        filename = self.filtered_files[listbox_index]
+        if filename not in self.config_files:
             return
         
-        # 获取选中的配置行
-        row = self.df.iloc[actual_index]
-        original_code = row['exhibition_code']
+        # 获取选中的配置数据
+        config_data = self.config_files[filename]
+        original_code = config_data['exhibition_code']
         
-        # 填充所有字段（保持现有数据）
-        self._fill_fields(self.basic_fields, row)
-        self._fill_fields(self.advanced_fields, row)
+        # 填充所有字段
+        self._fill_fields(self.basic_fields, config_data)
+        self._fill_fields(self.advanced_fields, config_data)
         
-        # 清空展会代码（需要用户重新输入新的展会代码）
+        # 清空展会代码
         exhibition_code_widget = self.basic_fields.get('exhibition_code')
         if exhibition_code_widget:
             self._clear_widget(exhibition_code_widget)
-            # 设置一个提示性的默认值
             suggested_code = f"{original_code}_copy"
             if hasattr(exhibition_code_widget, 'insert'):
                 exhibition_code_widget.insert(0, suggested_code)
         
-        # 设置当前行为None，表示这是一个新增操作
-        self.current_row = None
+        # 设置当前文件为None，表示新增
+        self.current_file = None
         
         self.show_info(f"已复制展会 '{original_code}' 的配置，请修改展会代码后保存")
     
@@ -431,20 +450,39 @@ class ConfigUIEditor:
             return
         
         listbox_index = selection[0]
-        if not self.filtered_indices or listbox_index >= len(self.filtered_indices):
+        if not self.filtered_files or listbox_index >= len(self.filtered_files):
             return
         
-        actual_index = self.filtered_indices[listbox_index]
-        if self.df is None or actual_index >= len(self.df):
+        filename = self.filtered_files[listbox_index]
+        if filename not in self.config_files:
             return
         
-        exhibition_code = self.df.iloc[actual_index]['exhibition_code']
+        exhibition_code = self.config_files[filename]['exhibition_code']
         
         if self.ask_yesno("确认", f"确定要删除展会 '{exhibition_code}' 的配置吗？"):
-            self.df = self.df.drop(actual_index).reset_index(drop=True)
-            self.save_to_file()
-            self.load_config()
-            self.show_info(f"已删除展会 '{exhibition_code}' 的配置")
+            # 删除文件
+            file_path = os.path.join(self.config_dir, filename)
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    log_file_operation("删除", file_path, success=True)
+                
+                # 从内存中删除
+                del self.config_files[filename]
+                if filename in self._local_config_hashes:
+                    del self._local_config_hashes[filename]
+                
+                # 标记文件已被修改
+                self._file_modified = True
+                
+                # 重新加载配置列表
+                self.load_configs()
+                self.show_info(f"已删除展会 '{exhibition_code}' 的配置")
+                
+            except Exception as e:
+                error_msg = f"删除配置文件失败: {e}"
+                log_file_operation("删除", file_path, success=False, error=error_msg)
+                self.show_error(error_msg)
     
     def save_config(self):
         """保存配置"""
@@ -474,72 +512,63 @@ class ConfigUIEditor:
             # 合并数据
             config_data = {**basic_data, **advanced_data}
             
-            if self.current_row is None:
-                # 新增配置
-                new_df = pd.DataFrame([config_data])
-                self.df = pd.concat([self.df, new_df], ignore_index=True)
-                self.show_info(f"已新增展会 '{config_data['exhibition_code']}' 的配置")
-            else:
-                # 更新配置 - 处理数据类型兼容性
-                if self.df is not None and self.current_row is not None:
-                    for field, value in config_data.items():
-                        if field in self.df.columns:
-                            # 如果值为None，保持原有的数据类型
-                            if value is None:
-                                # 检查原列的数据类型，如果是数值类型则设为NaN，否则设为None
-                                if pd.api.types.is_numeric_dtype(self.df[field]):
-                                    self.df.at[self.current_row, field] = pd.NA
-                                else:
-                                    self.df.at[self.current_row, field] = None
-                            else:
-                                # 确保数据类型兼容，特别是JSON字符串
-                                if pd.api.types.is_numeric_dtype(self.df[field]):
-                                    try:
-                                        # 尝试转换为数字，如果失败则保持原类型
-                                        self.df.at[self.current_row, field] = float(value) if '.' in str(value) else int(value)
-                                    except (ValueError, TypeError):
-                                        # 如果无法转换为数字，保持为字符串
-                                        self.df[field] = self.df[field].astype(object)
-                                        self.df.at[self.current_row, field] = str(value)
-                                else:
-                                    self.df.at[self.current_row, field] = value
-                        else:
-                            # 新字段，直接赋值
-                            self.df.at[self.current_row, field] = value
-                    self.show_info(f"已更新展会 '{config_data['exhibition_code']}' 的配置")
+            # 生成文件名
+            exhibition_code = config_data['exhibition_code']
+            filename = f"{exhibition_code}.json"
+            file_path = os.path.join(self.config_dir, filename)
+            
+            # 检查是否修改了展会代码
+            old_filename = self.current_file
+            if old_filename and old_filename != filename:
+                # 如果展会代码改变了，删除旧文件
+                old_file_path = os.path.join(self.config_dir, old_filename)
+                if os.path.exists(old_file_path):
+                    os.remove(old_file_path)
+                    log_file_operation("删除", old_file_path, success=True)
+                    # 从内存中删除旧配置
+                    if old_filename in self.config_files:
+                        del self.config_files[old_filename]
+                    if old_filename in self._local_config_hashes:
+                        del self._local_config_hashes[old_filename]
             
             # 保存到文件
-            self.save_to_file()
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=2)
             
-            # 标记文件已被修改（相对于远程仓库）
+            log_file_operation("保存", file_path, success=True)
+            
+            # 更新内存中的配置
+            self.config_files[filename] = config_data
+            self._local_config_hashes[filename] = self._get_file_hash(file_path)
+            
+            # 更新当前文件
+            self.current_file = filename
+            
+            # 标记文件已被修改
             self._file_modified = True
             
-            # 重新加载配置
-            self.load_config()
+            # 重新加载配置列表
+            self.load_configs()
             
             # 重新选择当前编辑的配置
-            if self.current_row is not None:
-                self.listbox.selection_set(self.current_row)
+            if filename in self.filtered_files:
+                index = self.filtered_files.index(filename)
+                self.listbox.selection_set(index)
                 self.on_list_select(None)
             
+            action = "修改" if old_filename else "新增"
+            self.show_info(f"已{action}展会 '{exhibition_code}' 的配置")
+            
         except Exception as e:
-            self.show_error(f"保存配置失败: {e}")
+            error_msg = f"保存配置失败: {e}"
+            log_exception(error_msg)
+            self.show_error(error_msg)
     
     def sync_config(self):
         """同步配置文件"""
         # 弹出确认对话框
-        if not self.ask_yesno("确认同步", "确定要从远程仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
+        if not self.ask_yesno("确认同步", "确定要从Gitee仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
             return
-        
-        # 先清空当前数据和界面状态，释放文件句柄
-        self.df = None
-        self.clear_fields()
-        self.listbox.delete(0, tk.END)
-        self.filtered_indices = []
-        
-        # 强制 garbage collect，确保 DataFrame 对象被完全释放（包括文件句柄）
-        import gc
-        gc.collect()
         
         # 显示同步提示
         self.show_info("正在同步配置文件，请稍候...")
@@ -549,14 +578,11 @@ class ConfigUIEditor:
             try:
                 log_info("开始同步配置文件...")
                 
-                # 创建Git同步管理器
-                sync_manager = SimpleGitSync()
+                # 创建Gitee同步管理器
+                sync_manager = GiteeSync()
                 
                 # 执行同步
-                success, message = sync_manager.pull_config()
-                
-                # 同步完成后，再次强制 gc，确保临时对象被清理
-                gc.collect()
+                success, message = sync_manager.pull_configs()
                 
                 # 在主线程中更新UI
                 self.root.after(0, lambda: self._sync_complete(success, message))
@@ -573,26 +599,18 @@ class ConfigUIEditor:
     def _sync_complete(self, success: bool, message: str):
         """同步完成后的UI更新"""
         try:
-            # 在更新 UI 前再次释放资源，避免文件锁定
-            import gc
-            gc.collect()
-            
-            # 添加延迟以确保文件系统操作完成（尤其是在 Windows 上）
-            import time
-            time.sleep(0.5)
-            
             if success:
                 log_info(f"同步成功: {message}")
                 self.show_info(f"同步成功！\n{message}")
                 # 重新加载配置文件
-                self.load_config()
+                self.load_configs()
                 # 同步成功后，重置修改标志
                 self._file_modified = False
             else:
                 log_error(f"同步失败: {message}")
                 self.show_error(f"同步失败：\n{message}")
                 # 即使同步失败，也要尝试重新加载本地配置
-                self.load_config()
+                self.load_configs()
         except Exception as e:
             log_exception(f"更新UI时发生错误: {e}")
             self.show_error(f"更新UI时发生错误：\n{e}")
@@ -603,52 +621,31 @@ class ConfigUIEditor:
             self.show_error(f"同步时发生错误：\n{error_msg}")
             # 尝试重新加载本地配置
             try:
-                self.load_config()
+                self.load_configs()
             except:
                 pass
         except Exception as e:
             log_exception(f"处理同步错误时发生异常: {e}")
     
-    def save_to_file(self):
-        """保存到Excel文件"""
-        if self.df is not None:
-            try:
-                self.df.to_excel(self.config_path, index=False)
-                log_file_operation("保存", self.config_path, success=True)
-                # 保存后更新文件哈希和修改标志
-                self._update_file_hash()
-                self._file_modified = False
-            except Exception as e:
-                log_file_operation("保存", self.config_path, success=False, error=str(e))
-                raise
-    
-    def _update_file_hash(self):
-        """计算并更新本地配置文件的哈希值"""
-        if os.path.exists(self.config_path):
-            try:
-                import hashlib
-                with open(self.config_path, 'rb') as f:
-                    self._local_config_hash = hashlib.md5(f.read()).hexdigest()
-            except Exception as e:
-                log_warning(f"计算文件哈希失败: {e}")
-                self._local_config_hash = None
-        else:
-            self._local_config_hash = None
-    
-    def _check_file_modified(self) -> bool:
-        """检查配置文件是否有外部修改"""
-        if not os.path.exists(self.config_path):
-            return False
-        
+    def _get_file_hash(self, file_path: str) -> str:
+        """计算文件的MD5哈希值"""
         try:
             import hashlib
-            with open(self.config_path, 'rb') as f:
-                current_hash = hashlib.md5(f.read()).hexdigest()
-            
-            # 如果哈希值不同，说明文件被修改了
-            if self._local_config_hash and current_hash != self._local_config_hash:
-                return True
-            
+            with open(file_path, 'rb') as f:
+                return hashlib.md5(f.read()).hexdigest()
+        except Exception as e:
+            log_warning(f"计算文件哈希失败: {e}")
+            return ""
+    
+    def _check_files_modified(self) -> bool:
+        """检查配置文件是否有外部修改"""
+        try:
+            for filename, original_hash in self._local_config_hashes.items():
+                file_path = os.path.join(self.config_dir, filename)
+                if os.path.exists(file_path):
+                    current_hash = self._get_file_hash(file_path)
+                    if current_hash != original_hash:
+                        return True
             return False
         except Exception as e:
             log_warning(f"检查文件修改状态失败: {e}")
@@ -656,23 +653,14 @@ class ConfigUIEditor:
     
     def on_closing(self):
         """窗口关闭事件处理"""
-        # 检查是否有未保存的修改
-        has_unsaved = False
-        
-        # 检查 DataFrame 是否有修改（如果当前有选中的行）
-        if self.current_row is not None and self.df is not None:
-            # 这里可以添加更精细的修改检测逻辑
-            has_unsaved = self._check_file_modified()
-        
-        # 检查配置文件是否被修改（相对于最后一次同步的状态）
-        if not has_unsaved:
-            has_unsaved = self._file_modified or self._check_file_modified()
+        # 检查是否有未保存的修改或外部文件修改
+        has_unsaved = self._file_modified or self._check_files_modified()
         
         if has_unsaved:
             # 弹出对话框询问是否推送
             result = messagebox.askyesnocancel(
                 "未保存的修改",
-                "检测到配置文件有修改。\n\n是否推送到远程仓库？\n（是=推送，否=不推送，取消=取消关闭）"
+                "检测到配置文件有修改。\n\n是否推送到Gitee仓库？\n（是=推送，否=不推送，取消=取消关闭）"
             )
             
             if result is None:
@@ -694,11 +682,11 @@ class ConfigUIEditor:
             try:
                 log_info("开始推送配置文件...")
                 
-                # 创建Git同步管理器
-                sync_manager = SimpleGitSync()
+                # 创建Gitee同步管理器
+                sync_manager = GiteeSync()
                 
                 # 执行推送
-                success, message = sync_manager.push_config()
+                success, message = sync_manager.push_configs()
                 
                 # 在主线程中更新 UI 并关闭
                 self.root.after(0, lambda: self._push_complete(success, message))
@@ -718,9 +706,11 @@ class ConfigUIEditor:
         """推送完成后处理"""
         if success:
             log_info(f"推送成功: {message}")
-            messagebox.showinfo("推送成功", f"配置文件已成功推送到远程仓库。\n\n{message}")
+            messagebox.showinfo("推送成功", f"配置文件已成功推送到Gitee仓库。\n\n{message}")
             # 更新文件哈希，标记为已同步
-            self._update_file_hash()
+            for filename in self.config_files:
+                file_path = os.path.join(self.config_dir, filename)
+                self._local_config_hashes[filename] = self._get_file_hash(file_path)
             self._file_modified = False
         else:
             log_error(f"推送失败: {message}")
@@ -748,23 +738,23 @@ class ConfigUIEditor:
     
     # 消息框方法的简化版本（带日志记录）
     def show_info(self, message):
-        log_info(f"信息: {message}",False)
+        log_info(f"信息: {message}", False)
         messagebox.showinfo("提示", message)
     
     def show_warning(self, message):
-        log_warning(f"警告: {message}",False)
+        log_warning(f"警告: {message}", False)
         messagebox.showwarning("警告", message)
     
     def show_error(self, message):
-        log_error(f"错误: {message}",ui=False)
+        log_error(f"错误: {message}", ui=False)
         messagebox.showerror("错误", message)
     
     def ask_yesno(self, title, message):
-        log_info(f"询问 ({title}): {message}",ui=False)
+        log_info(f"询问 ({title}): {message}", ui=False)
         return messagebox.askyesno(title, message)
     
     def ask_okcancel(self, title, message):
-        log_info(f"询问 ({title}): {message}",ui=False)
+        log_info(f"询问 ({title}): {message}", ui=False)
         return messagebox.askokcancel(title, message)
     
     def run(self):

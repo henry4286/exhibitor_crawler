@@ -1,15 +1,16 @@
 """
 配置管理模块
 
-负责从Excel配置文件中加载和管理爬虫配置
+负责从JSON配置文件中加载和管理爬虫配置
 """
 
 import json
 import os
+import glob
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-import pandas as pd
+from unified_logger import log_info, log_warning, log_exception
 
 
 @dataclass
@@ -45,13 +46,14 @@ class ConfigManager:
     """
     配置管理器类
     
-    负责从Excel配置文件中加载并管理各展会的爬虫配置。
+    负责从JSON配置文件中加载并管理各展会的爬虫配置。
     使用单例模式确保配置只加载一次。
     """
     
     _instance: Optional['ConfigManager'] = None
     _configs: dict[str, CrawlerConfig] = {}
     _initialized: bool = False
+    _config_dir: str = 'config'
     
     def __new__(cls) -> 'ConfigManager':
         if cls._instance is None:
@@ -64,55 +66,64 @@ class ConfigManager:
             ConfigManager._initialized = True
     
     def _load_configurations(self) -> None:
-        """从Excel文件加载配置"""
-        config_path = 'config.xlsx'
+        """从JSON文件加载配置"""
+        if not os.path.exists(self._config_dir):
+            raise FileNotFoundError(f"配置目录不存在: {self._config_dir}")
         
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"配置文件不存在: {config_path}")
+        # 获取所有JSON配置文件
+        json_files = glob.glob(os.path.join(self._config_dir, "*.json"))
         
-        # 尝试多种编码方式读取Excel文件
-        try:
-            # 首先尝试默认方式
-            config_df = pd.read_excel(config_path)
-        except Exception as e:
+        if not json_files:
+            log_warning(f"配置目录 {self._config_dir} 中没有找到JSON配置文件")
+            return
+        
+        config_count = 0
+        for json_file in json_files:
             try:
-                # 尝试使用openpyxl引擎
-                config_df = pd.read_excel(config_path, engine='openpyxl')
-            except Exception:
-                # 最后尝试xlrd引擎
-                try:
-                    config_df = pd.read_excel(config_path, engine='xlrd')
-                except Exception as e2:
-                    raise ValueError(f"无法读取配置文件 {config_path}，请检查文件格式和编码: {e2}")
+                # 跳过索引文件
+                if os.path.basename(json_file) == 'index.json':
+                    continue
+                
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+                
+                exhibition_code = config_data.get('exhibition_code')
+                if not exhibition_code:
+                    log_warning(f"配置文件 {json_file} 缺少 exhibition_code 字段，跳过")
+                    continue
+                
+                # 基本配置
+                config = CrawlerConfig(
+                    exhibition_code=exhibition_code,
+                    miniprogram_name=config_data.get('miniprogram_name', ''),
+                    url=config_data.get('url', ''),
+                    request_method=config_data.get('request_method', 'POST'),
+                    headers=config_data.get('headers', {}),
+                    params=config_data.get('params', ''),
+                    data=config_data.get('data', ''),
+                    items_key=config_data.get('items_key', ''),
+                    company_info_keys=config_data.get('company_info_keys', {}),
+                    request_mode=config_data.get('request_mode', 'single')
+                )
+                
+                # 二次请求配置
+                if config.request_mode == "double":
+                    config.url_detail = config_data.get('url_detail')
+                    config.request_method_detail = config_data.get('request_method_detail', 'GET')
+                    config.headers_detail = config_data.get('headers_detail', {})
+                    config.params_detail = config_data.get('params_detail', '')
+                    config.data_detail = config_data.get('data_detail', '')
+                    config.items_key_detail = config_data.get('items_key_detail', '')
+                    config.info_key = config_data.get('info_key', {})
+                
+                self._configs[exhibition_code] = config
+                config_count += 1
+                
+            except Exception as e:
+                log_exception(f"加载配置文件失败 {json_file}: {e}")
+                continue
         
-        for _, row in config_df.iterrows():
-            exhibition_code = row['exhibition_code']
-            
-            # 基本配置
-            config = CrawlerConfig(
-                exhibition_code=row['exhibition_code'],
-                miniprogram_name=row['miniprogram_name'],
-                url=row['url'],
-                request_method=row['request_method'],
-                headers=json.loads(row['headers']),
-                params=row['params'],
-                data=row['data'],
-                items_key=row['items_key'],
-                company_info_keys=json.loads(row['company_info_keys']),
-                request_mode=row.get('request_mode', 'single')
-            )
-            
-            # 二次请求配置
-            if config.request_mode == "double":
-                config.url_detail = row.get('url_detail')
-                config.request_method_detail = row.get('request_method_detail', 'GET')
-                config.headers_detail = self._safe_json_load(row.get('headers_detail'))
-                config.params_detail = row.get('params_detail')
-                config.data_detail = row.get('data_detail')
-                config.items_key_detail = row.get('items_key_detail')
-                config.info_key = self._safe_json_load(row.get('info_key'))
-            
-            self._configs[exhibition_code] = config
+        log_info(f"成功加载 {config_count} 个配置文件")
     
     def get_config(self, exhibition_code: str) -> Optional[CrawlerConfig]:
         """
@@ -135,15 +146,20 @@ class ConfigManager:
         """
         return list(self._configs.keys())
     
-    def _safe_json_load(self, json_str: Any) -> dict:
-        """安全地加载JSON字符串"""
+    def reload_configs(self) -> None:
+        """重新加载所有配置"""
+        self._configs.clear()
+        self._load_configurations()
+    
+    def _safe_json_load(self, json_data: Any) -> dict:
+        """安全地加载JSON数据"""
         try:
-            if pd.isna(json_str) or json_str == '' or json_str is None:
+            if json_data is None or json_data == '':
                 return {}
-            if isinstance(json_str, str):
-                return json.loads(json_str)
-            elif isinstance(json_str, dict):
-                return json_str
+            if isinstance(json_data, dict):
+                return json_data
+            elif isinstance(json_data, str):
+                return json.loads(json_data)
             else:
                 return {}
         except (json.JSONDecodeError, TypeError):

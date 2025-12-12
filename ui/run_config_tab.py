@@ -9,7 +9,6 @@ from tkinter import ttk, scrolledtext
 import subprocess
 import threading
 import datetime
-import pandas as pd
 
 # 导入日志系统
 from unified_logger import get_logger
@@ -111,20 +110,16 @@ class RunConfigTab:
     
     def update_current_exhibition(self):
         """更新当前选中的展会信息"""
-        current_row = self.config_editor.current_row
-        df = self.config_editor.df
+        current_file = self.config_editor.current_file
+        config_files = self.config_editor.config_files
         
-        if current_row is not None and df is not None:
-            if current_row < len(df):
-                row = df.iloc[current_row]
-                exhibition_code = row.get('exhibition_code', '')
-                request_mode = row.get('request_mode', 'single')
-                
-                self.current_exhibition_label.config(text=exhibition_code)
-                self.current_mode_label.config(text=request_mode)
-            else:
-                self.current_exhibition_label.config(text="未选择")
-                self.current_mode_label.config(text="未选择")
+        if current_file is not None and current_file in config_files:
+            config_data = config_files[current_file]
+            exhibition_code = config_data.get('exhibition_code', '')
+            request_mode = config_data.get('request_mode', 'single')
+            
+            self.current_exhibition_label.config(text=exhibition_code)
+            self.current_mode_label.config(text=request_mode)
         else:
             self.current_exhibition_label.config(text="未选择")
             self.current_mode_label.config(text="未选择")
@@ -149,14 +144,14 @@ class RunConfigTab:
             self.config_editor.show_warning("爬虫正在运行中，请先停止当前运行")
             return
         
-        current_row = self.config_editor.current_row
-        df = self.config_editor.df
+        current_file = self.config_editor.current_file
+        config_files = self.config_editor.config_files
         
-        if current_row is None or df is None:
+        if current_file is None or current_file not in config_files:
             self.config_editor.show_warning("请先选择要运行的展会配置")
             return
         
-        exhibition_code = df.iloc[current_row]['exhibition_code']
+        exhibition_code = config_files[current_file]['exhibition_code']
         
         # 验证参数
         try:
@@ -286,14 +281,14 @@ class RunConfigTab:
             self.config_editor.show_warning("爬虫正在运行中，请先停止当前运行")
             return
         
-        current_row = self.config_editor.current_row
-        df = self.config_editor.df
+        current_file = self.config_editor.current_file
+        config_files = self.config_editor.config_files
         
-        if current_row is None or df is None:
+        if current_file is None or current_file not in config_files:
             self.config_editor.show_warning("请先选择要测试的展会配置")
             return
         
-        exhibition_code = df.iloc[current_row]['exhibition_code']
+        exhibition_code = config_files[current_file]['exhibition_code']
         
         # 确认测试
         if not self.config_editor.ask_yesno("确认测试", 

@@ -1,8 +1,9 @@
 """
 配置文件图形化编辑器
 
-使用tkinter创建的GUI界面，用于编辑config.xlsx配置文件
+使用tkinter创建的GUI界面，用于编辑JSON格式配置文件
 支持增删改查功能，提供直观的操作界面
+集成Gitee云端同步功能
 
 重构后的版本 - 将代码拆分为多个模块以提高可读性和可维护性
 集成了统一的日志系统
@@ -18,7 +19,7 @@ import threading
 # 导入统一日志系统
 from unified_logger import log_info, log_error, log_exception
 from ui import ConfigUIEditor
-from git_sync import SimpleGitSync
+from gitee_sync import GiteeSync
 
 
 def ask_sync_confirmation(is_startup=True):
@@ -81,10 +82,9 @@ def main():
             f"缺少必要的依赖模块: {missing_module}\n\n"
             f"请安装以下依赖:\n"
             f"- tkinter (通常随Python安装)\n"
-            f"- pandas\n"
-            f"- openpyxl\n"
-            f"- GitPython\n\n"
-            f"运行命令: pip install pandas openpyxl GitPython"
+            f"- GitPython\n"
+            f"- python-dotenv\n\n"
+            f"运行命令: pip install GitPython python-dotenv"
         )
         sys.exit(1)
         
