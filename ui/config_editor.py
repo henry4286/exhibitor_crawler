@@ -10,11 +10,15 @@ import json
 import os
 import pandas as pd
 import traceback
+import threading
 from typing import Optional, Dict, Any, List
 
 from .basic_config_tab import BasicConfigTab
 from .advanced_config_tab import AdvancedConfigTab
 from .run_config_tab import RunConfigTab
+
+# 导入Git同步模块
+from git_sync import SimpleGitSync
 
 # 导入新的日志系统
 from unified_logger import log_info, log_warning, log_error, log_exception, log_config_error, log_file_operation
@@ -35,9 +39,14 @@ class ConfigUIEditor:
         self.df = None
         self.current_row = None
         
+        # 文件修改追踪标志
+        self._file_modified = False
+        self._local_config_hash = None  # 用于追踪文件变化
+        
         # 初始化界面
         self.setup_ui()
         self.load_config()
+        self._update_file_hash()  # 加载后记录当前文件哈希
         
         # 绑定窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -90,7 +99,7 @@ class ConfigUIEditor:
         ttk.Button(button_frame, text="复制", command=self.copy_config).grid(row=0, column=1, padx=2)
         ttk.Button(button_frame, text="删除", command=self.delete_config).grid(row=0, column=2, padx=2)
         ttk.Button(button_frame, text="保存", command=self.save_config).grid(row=0, column=3, padx=2)
-        ttk.Button(button_frame, text="刷新", command=self.load_config).grid(row=0, column=4, padx=2)
+        ttk.Button(button_frame, text="同步", command=self.sync_config).grid(row=0, column=4, padx=2)
         
         # 配置左侧框架权重
         left_frame.columnconfigure(0, weight=1)
@@ -156,7 +165,6 @@ class ConfigUIEditor:
     def load_config(self):
         """加载配置文件"""
         try:
-            log_info(f"正在加载配置文件: {self.config_path}")
             if not os.path.exists(self.config_path):
                 error_msg = f"配置文件不存在: {self.config_path}"
                 log_config_error(self.config_path, error_msg)
@@ -164,8 +172,6 @@ class ConfigUIEditor:
                 return
             
             self.df = pd.read_excel(self.config_path)
-            log_info(f"成功加载配置文件，数据行数: {len(self.df)}")
-            
             # 更新列表框（应用当前搜索条件）
             self.update_listbox()
             
@@ -174,13 +180,13 @@ class ConfigUIEditor:
             
             config_count = len(self.df) if self.df is not None else 0
             success_msg = f"已加载配置文件，共 {config_count} 个配置"
-            log_info(success_msg)
+            log_info(success_msg,False)
             # 去掉弹窗提示，只在日志中记录
             # self.show_info(success_msg)
             
         except Exception as e:
             error_msg = f"加载配置文件失败: {e}"
-            log_exception(error_msg, exc_info=True)
+            log_exception(error_msg)
             messagebox.showerror("错误", error_msg)
             self.df = None
     
@@ -505,6 +511,9 @@ class ConfigUIEditor:
             # 保存到文件
             self.save_to_file()
             
+            # 标记文件已被修改（相对于远程仓库）
+            self._file_modified = True
+            
             # 重新加载配置
             self.load_config()
             
@@ -516,40 +525,246 @@ class ConfigUIEditor:
         except Exception as e:
             self.show_error(f"保存配置失败: {e}")
     
+    def sync_config(self):
+        """同步配置文件"""
+        # 弹出确认对话框
+        if not self.ask_yesno("确认同步", "确定要从远程仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
+            return
+        
+        # 先清空当前数据和界面状态，释放文件句柄
+        self.df = None
+        self.clear_fields()
+        self.listbox.delete(0, tk.END)
+        self.filtered_indices = []
+        
+        # 强制 garbage collect，确保 DataFrame 对象被完全释放（包括文件句柄）
+        import gc
+        gc.collect()
+        
+        # 显示同步提示
+        self.show_info("正在同步配置文件，请稍候...")
+        
+        # 在后台线程中执行同步操作
+        def sync_worker():
+            try:
+                log_info("开始同步配置文件...")
+                
+                # 创建Git同步管理器
+                sync_manager = SimpleGitSync()
+                
+                # 执行同步
+                success, message = sync_manager.pull_config()
+                
+                # 同步完成后，再次强制 gc，确保临时对象被清理
+                gc.collect()
+                
+                # 在主线程中更新UI
+                self.root.after(0, lambda: self._sync_complete(success, message))
+                
+            except Exception as e:
+                log_exception(f"同步时发生错误: {e}")
+                # 在主线程中显示错误
+                self.root.after(0, lambda: self._sync_error(str(e)))
+        
+        # 启动后台线程
+        sync_thread = threading.Thread(target=sync_worker, daemon=True)
+        sync_thread.start()
+    
+    def _sync_complete(self, success: bool, message: str):
+        """同步完成后的UI更新"""
+        try:
+            # 在更新 UI 前再次释放资源，避免文件锁定
+            import gc
+            gc.collect()
+            
+            # 添加延迟以确保文件系统操作完成（尤其是在 Windows 上）
+            import time
+            time.sleep(0.5)
+            
+            if success:
+                log_info(f"同步成功: {message}")
+                self.show_info(f"同步成功！\n{message}")
+                # 重新加载配置文件
+                self.load_config()
+                # 同步成功后，重置修改标志
+                self._file_modified = False
+            else:
+                log_error(f"同步失败: {message}")
+                self.show_error(f"同步失败：\n{message}")
+                # 即使同步失败，也要尝试重新加载本地配置
+                self.load_config()
+        except Exception as e:
+            log_exception(f"更新UI时发生错误: {e}")
+            self.show_error(f"更新UI时发生错误：\n{e}")
+    
+    def _sync_error(self, error_msg: str):
+        """同步错误处理"""
+        try:
+            self.show_error(f"同步时发生错误：\n{error_msg}")
+            # 尝试重新加载本地配置
+            try:
+                self.load_config()
+            except:
+                pass
+        except Exception as e:
+            log_exception(f"处理同步错误时发生异常: {e}")
+    
     def save_to_file(self):
         """保存到Excel文件"""
         if self.df is not None:
             try:
                 self.df.to_excel(self.config_path, index=False)
                 log_file_operation("保存", self.config_path, success=True)
+                # 保存后更新文件哈希和修改标志
+                self._update_file_hash()
+                self._file_modified = False
             except Exception as e:
                 log_file_operation("保存", self.config_path, success=False, error=str(e))
                 raise
     
+    def _update_file_hash(self):
+        """计算并更新本地配置文件的哈希值"""
+        if os.path.exists(self.config_path):
+            try:
+                import hashlib
+                with open(self.config_path, 'rb') as f:
+                    self._local_config_hash = hashlib.md5(f.read()).hexdigest()
+            except Exception as e:
+                log_warning(f"计算文件哈希失败: {e}")
+                self._local_config_hash = None
+        else:
+            self._local_config_hash = None
+    
+    def _check_file_modified(self) -> bool:
+        """检查配置文件是否有外部修改"""
+        if not os.path.exists(self.config_path):
+            return False
+        
+        try:
+            import hashlib
+            with open(self.config_path, 'rb') as f:
+                current_hash = hashlib.md5(f.read()).hexdigest()
+            
+            # 如果哈希值不同，说明文件被修改了
+            if self._local_config_hash and current_hash != self._local_config_hash:
+                return True
+            
+            return False
+        except Exception as e:
+            log_warning(f"检查文件修改状态失败: {e}")
+            return False
+    
     def on_closing(self):
         """窗口关闭事件处理"""
+        # 检查是否有未保存的修改
+        has_unsaved = False
+        
+        # 检查 DataFrame 是否有修改（如果当前有选中的行）
+        if self.current_row is not None and self.df is not None:
+            # 这里可以添加更精细的修改检测逻辑
+            has_unsaved = self._check_file_modified()
+        
+        # 检查配置文件是否被修改（相对于最后一次同步的状态）
+        if not has_unsaved:
+            has_unsaved = self._file_modified or self._check_file_modified()
+        
+        if has_unsaved:
+            # 弹出对话框询问是否推送
+            result = messagebox.askyesnocancel(
+                "未保存的修改",
+                "检测到配置文件有修改。\n\n是否推送到远程仓库？\n（是=推送，否=不推送，取消=取消关闭）"
+            )
+            
+            if result is None:
+                # 用户选择取消，不关闭窗口
+                return
+            elif result is True:
+                # 用户选择推送，执行推送操作
+                self._push_and_close()
+                return
+            # 否则直接关闭（不推送）
+        
+        # 没有修改或用户选择不推送，直接关闭
+        self.root.destroy()
+    
+    def _push_and_close(self):
+        """推送配置并关闭应用"""
+        # 在后台线程执行推送操作，避免阻塞 UI
+        def push_worker():
+            try:
+                log_info("开始推送配置文件...")
+                
+                # 创建Git同步管理器
+                sync_manager = SimpleGitSync()
+                
+                # 执行推送
+                success, message = sync_manager.push_config()
+                
+                # 在主线程中更新 UI 并关闭
+                self.root.after(0, lambda: self._push_complete(success, message))
+                
+            except Exception as e:
+                log_exception(f"推送时发生错误: {e}")
+                self.root.after(0, lambda: self._push_error(str(e)))
+        
+        # 启动后台线程
+        push_thread = threading.Thread(target=push_worker, daemon=True)
+        push_thread.start()
+        
+        # 显示推送提示
+        self.show_info("正在推送配置文件，请稍候...")
+    
+    def _push_complete(self, success: bool, message: str):
+        """推送完成后处理"""
+        if success:
+            log_info(f"推送成功: {message}")
+            messagebox.showinfo("推送成功", f"配置文件已成功推送到远程仓库。\n\n{message}")
+            # 更新文件哈希，标记为已同步
+            self._update_file_hash()
+            self._file_modified = False
+        else:
+            log_error(f"推送失败: {message}")
+            # 推送失败，询问是否仍然关闭
+            if messagebox.askyesno("推送失败", f"推送失败：{message}\n\n仍然关闭应用吗？"):
+                pass
+            else:
+                # 用户选择不关闭，返回
+                return
+        
+        # 关闭应用
+        self.root.destroy()
+    
+    def _push_error(self, error_msg: str):
+        """推送错误处理"""
+        log_error(f"推送时发生错误: {error_msg}")
+        if messagebox.askyesno("推送错误", f"推送时发生错误：{error_msg}\n\n仍然关闭应用吗？"):
+            pass
+        else:
+            return
+        
+        # 关闭应用
         self.root.destroy()
                 
     
     # 消息框方法的简化版本（带日志记录）
     def show_info(self, message):
-        log_info(f"信息: {message}")
+        log_info(f"信息: {message}",False)
         messagebox.showinfo("提示", message)
     
     def show_warning(self, message):
-        log_warning(f"警告: {message}")
+        log_warning(f"警告: {message}",False)
         messagebox.showwarning("警告", message)
     
     def show_error(self, message):
-        log_error(f"错误: {message}")
+        log_error(f"错误: {message}",ui=False)
         messagebox.showerror("错误", message)
     
     def ask_yesno(self, title, message):
-        log_info(f"询问 ({title}): {message}")
+        log_info(f"询问 ({title}): {message}",ui=False)
         return messagebox.askyesno(title, message)
     
     def ask_okcancel(self, title, message):
-        log_info(f"询问 ({title}): {message}")
+        log_info(f"询问 ({title}): {message}",ui=False)
         return messagebox.askokcancel(title, message)
     
     def run(self):

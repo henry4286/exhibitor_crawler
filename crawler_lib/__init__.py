@@ -9,7 +9,7 @@ from .excel_exporter import ExcelExporter
 from .http_client import HttpClient
 from .data_parser import DataParser
 from .utils import get_nested_value
-from .crawler import CompanyCrawler , DoubleFetchCrawler
+from .crawler import CompanyCrawler, DoubleFetchCrawler, BaseCrawler, ParseError
 
 __all__ = [
     'ConfigManager',
@@ -19,6 +19,8 @@ __all__ = [
     'DataParser',
     'CompanyCrawler',
     'DoubleFetchCrawler',
+    'BaseCrawler',
+    'ParseError',
     'get_nested_value',
 ]
 

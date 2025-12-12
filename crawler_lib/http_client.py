@@ -290,6 +290,7 @@ class HttpClient:
                 response_data = HttpClient.parse_response(response)
                 
                 is_success, reason = HttpClient.is_rate_limit(response_data)
+                
                 if not is_success: 
                     wait_time = HttpClient.calculate_retry_delay(attempt)
                     print(f"❌ {context} 请求失败触发限流重试机制,触发原因：{reason}: ", flush=True)
@@ -314,6 +315,6 @@ class HttpClient:
                 
             except Exception as e:
                 
-                pass
+                raise RuntimeWarning(f"请求异常: {str(e)}")
                     
                 

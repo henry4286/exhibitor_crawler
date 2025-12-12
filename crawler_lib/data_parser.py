@@ -26,7 +26,7 @@ class DataParser:
             items_key: 数据提取路径（如 "data.list"）
         
         Returns:
-            提取的列表数据
+            提取的列表数据，提取失败会抛出异常
         """
         if not response_data or not isinstance(response_data, dict):
             return []
@@ -51,14 +51,18 @@ class DataParser:
             field_mappings: 字段映射配置 {输出字段名: 源数据路径}
         
         Returns:
-            解析后的数据信息列表
+            解析后的数据信息列表，提取失败会抛出异常
         """
         results = []
         
         for item in items:
             company_info = {}
+            
             for output_field, source_path in field_mappings.items():
-                company_info[output_field] = get_nested_value(item, source_path)
+                try:
+                    company_info[output_field] = get_nested_value(item, source_path)
+                except Exception:
+                    raise ValueError(f"字段提取失败: {output_field} from path {source_path}\n{item}")
             results.append(company_info)
         
         return results

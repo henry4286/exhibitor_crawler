@@ -13,18 +13,11 @@
 """
 
 import sys
-import json
 import urllib3
 from typing import Any, Dict, List, Tuple
 
-from crawler_lib import (
-    ConfigManager,
-    HttpClient,
-    DataParser,
-    get_nested_value
-)
 from crawler_lib.detail_fetcher import DetailFetcher
-from crawler_lib.crawler import BaseCrawler
+from crawler_lib.base_crawler import BaseCrawler
 
 
 class ConfigTester(BaseCrawler):
@@ -155,7 +148,7 @@ class ConfigTester(BaseCrawler):
         
         for output_field, source_path in self.config.company_info_keys.items():
             # 这里测试的是解析后的结果，所以直接检查字段是否存在且有值
-            value = test_item.get(output_field)
+            value = test_item[output_field]
             results[output_field] = value
             
             if value is not None and str(value).strip():  # 有有效值
@@ -164,7 +157,7 @@ class ConfigTester(BaseCrawler):
             else:
                 status = "❌"  # 字段不存在或值为空都视为配置错误
             
-            value_str = str(value)[:100] if value else "(未找到或为空)"
+            value_str = str(value)[:50] if value else "(未找到或为空)"
             print(f"{status} {output_field} ← {source_path}: {value_str}")
         
         # 判断字段映射是否成功
@@ -221,7 +214,7 @@ class ConfigTester(BaseCrawler):
             # 检查第2页是否有数据（某些情况下第2页可能没有数据）
             if page2_count > 0:
                 # 检查数据是否重复（使用crawler.py相同的方法）
-                is_same = self._is_same_data(page1_items, page2_items)
+                is_same = page1_items == page2_items
                 
                 if is_same:
                     print(f"⚠️  警告：第1页和第2页的数据相同，可能存在翻页问题")

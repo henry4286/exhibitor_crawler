@@ -59,56 +59,15 @@ def ask_sync_confirmation(is_startup=True):
 def main():
     """主函数"""
     app_start_time = datetime.now()
-    sync_manager = None
-    original_config_hash = None
     
     try:
         # 记录程序启动信息
         log_info("🚀 启动 配置文件图形化编辑器 v2.0")
         
-        # Git同步：询问用户是否要从远程拉取最新配置
-        log_info("Git同步 - 询问用户是否从远程仓库同步配置文件...")
-        sync_manager = SimpleGitSync()
-        
-        # 询问用户是否要同步
-        choice = ask_sync_confirmation(is_startup=True)
-        
-        if choice == 'sync':
-            log_info("Git同步 - 用户选择同步配置文件...")
-            def sync_and_start():
-                """后台Git同步线程函数"""
-                try:
-                    success, message = sync_manager.pull_config()
-                    if success:
-                        log_info(f"Git同步成功: {message}")
-                    else:
-                        log_error(f"Git同步失败: {message}")
-                except Exception as e:
-                    log_exception(f"Git同步时发生错误: {e}")
-            
-            # 启动Git同步线程
-            sync_thread = threading.Thread(target=sync_and_start, daemon=True)
-            sync_thread.start()
-            
-            # 等待同步完成（最多等待5秒）
-            sync_thread.join(timeout=5)
-        elif choice == 'skip':
-            log_info("Git同步 - 用户选择跳过启动时同步")
-        elif choice == 'cancel':
-            log_info("Git同步 - 用户取消启动时同步")
-        else:
-            # 用户关闭了对话框，跳过同步
-            log_info("Git同步 - 用户关闭对话框，跳过启动时同步")
-        
-        # 记录原始配置文件的哈希值，用于后续比较
-        original_config_hash = sync_manager._get_file_hash(sync_manager.local_config_path)
-        if original_config_hash:
-            log_info(f"配置文件哈希: {original_config_hash}")
-        
         # 创建并运行配置编辑器
         log_info("配置编辑器 - 正在初始化GUI界面...")
         app = ConfigUIEditor()
-        log_info("配置编辑器 - 初始化完成，启动GUI界面...")
+        log_info("配置编辑器 - 初始化完成，启动GUI界面...",False)
         app.run()
         
     except ImportError as e:
@@ -146,42 +105,9 @@ def main():
         sys.exit(1)
     
     finally:
-        # 程序关闭前的Git推送逻辑
-        if sync_manager:
-            try:
-                # 检查配置文件是否有变更
-                if original_config_hash:
-                    has_changed = sync_manager.has_config_changed(original_config_hash)
-                else:
-                    has_changed = sync_manager.has_config_changed()
-                
-                if has_changed:
-                    log_info("Git同步 - 检测到配置文件有变更，询问用户是否同步...")
-                    choice = ask_sync_confirmation(is_startup=False)
-                    
-                    if choice == 'sync':
-                        log_info("Git同步 - 用户选择同步配置文件...")
-                        success, message = sync_manager.push_config()
-                        if success:
-                            log_info(f"Git推送成功: {message}")
-                        else:
-                            log_error(f"Git推送失败: {message}")
-                    elif choice == 'skip':
-                        log_info("Git同步 - 用户选择跳过同步")
-                    elif choice == 'cancel':
-                        log_info("Git同步 - 用户取消操作")
-                    else:
-                        # 用户关闭了对话框，跳过同步
-                        log_info("Git同步 - 用户关闭对话框，跳过同步")
-                else:
-                    log_info("Git同步 - 配置文件未变更，跳过同步")
-                    
-            except Exception as e:
-                log_exception(f"Git推送时发生错误: {e}")
-        
         # 记录程序关闭信息
         runtime = datetime.now() - app_start_time
-        log_info(f"👋 关闭 配置文件图形化编辑器 (运行时间: {runtime})")
+        log_info(f"👋 关闭 配置文件图形化编辑器 (运行时间: {runtime})", ui=False)
 
 
 if __name__ == "__main__":

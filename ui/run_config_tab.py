@@ -73,8 +73,9 @@ class RunConfigTab:
         button_frame.grid(row=2, column=0, columnspan=2, pady=20)
         
         ttk.Button(button_frame, text="测试配置", command=self.test_config).grid(row=0, column=0, padx=5)
-        ttk.Button(button_frame, text="运行爬虫", command=self.run_crawler, style='Accent.TButton').grid(row=0, column=1, padx=5)
-        ttk.Button(button_frame, text="停止运行", command=self.stop_crawler).grid(row=0, column=2, padx=5)
+        ttk.Button(button_frame, text="测试全部", command=self.test_all_configs, style='Success.TButton').grid(row=0, column=1, padx=5)
+        ttk.Button(button_frame, text="运行爬虫", command=self.run_crawler, style='Accent.TButton').grid(row=0, column=2, padx=5)
+        ttk.Button(button_frame, text="停止运行", command=self.stop_crawler).grid(row=0, column=3, padx=5)
         
         # 运行日志
         log_frame = ttk.LabelFrame(run_frame, text="运行日志", padding="10")
@@ -96,10 +97,14 @@ class RunConfigTab:
         """初始化日志系统的UI回调，将日志输出到UI窗口"""
         def log_callback(message: str):
             """日志回调函数"""
-            if self.log_text:
-                self.log_text.insert('end', f"{message}\n")
-                self.log_text.see('end')  # 自动滚动到底部
-                self.config_editor.root.update_idletasks()  # 实时更新UI
+            try:
+                if self.log_text and self.log_text.winfo_exists():
+                    self.log_text.insert('end', f"{message}\n")
+                    self.log_text.see('end')  # 自动滚动到底部
+                    self.config_editor.root.update_idletasks()  # 实时更新UI
+            except tk.TclError:
+                # UI控件已被销毁，静默忽略
+                pass
         
         # 重新初始化日志系统，传入UI回调
         get_logger(ui_log_callback=log_callback)
@@ -135,7 +140,8 @@ class RunConfigTab:
     
     def clear_log(self):
         """清空日志"""
-        self.log_text.delete('1.0', tk.END)
+        if self.log_text and self.log_text.winfo_exists():
+            self.log_text.delete('1.0', tk.END)
     
     def run_crawler(self):
         """运行爬虫"""
@@ -359,4 +365,199 @@ class RunConfigTab:
         
         # 启动线程
         thread = threading.Thread(target=test_in_thread, daemon=True)
+        thread.start()
+    
+    def test_all_configs(self):
+        """测试所有配置"""
+        if self.is_running:
+            self.config_editor.show_warning("正在运行中，请先停止当前运行")
+            return
+        
+        # 获取所有展会代码
+        try:
+            from crawler_lib.config_manager import ConfigManager
+            config_manager = ConfigManager()
+            all_codes = config_manager.get_all_codes()
+            
+            if not all_codes:
+                self.config_editor.show_warning("没有找到任何展会配置")
+                return
+            
+        except Exception as e:
+            self.config_editor.show_error(f"获取展会配置失败: {e}")
+            return
+        
+        # 验证线程数参数
+        try:
+            max_workers = int(self.workers_var.get())
+            if max_workers < 1 or max_workers > 20:
+                self.config_editor.show_error("线程数必须在1-20之间")
+                return
+        except ValueError:
+            self.config_editor.show_error("请输入有效的线程数")
+            return
+        
+        # 确认测试
+        total_configs = len(all_codes)
+        if not self.config_editor.ask_yesno("确认测试全部", 
+                                           f"确定要测试所有 {total_configs} 个展会配置吗？\n"
+                                           f"将使用 {max_workers} 个线程并发测试。\n"
+                                           f"这可能需要一些时间。"):
+            return
+        
+        # 清空日志并初始化
+        self.clear_log()
+        self.log_message(f"正在初始化全部配置测试...")
+        self.log_message(f"总计: {total_configs} 个展会配置")
+        self.log_message(f"并发线程数: {max_workers}")
+        
+        # 启动测试
+        self.is_running = True
+        self.log_message(f"开始测试全部配置...")
+        self.log_message("=" * 80)
+        
+        # 测试结果跟踪
+        test_results = {}
+        results_lock = threading.Lock()
+        completed_count = [0]  # 使用列表以便在闭包中修改
+        
+        def test_single_config(exhibition_code):
+            """测试单个展会配置"""
+            process = None
+            try:
+                # 构建命令
+                cmd = ['python', 'test_config.py', exhibition_code]
+                
+                # 运行进程
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace'
+                )
+                
+                stdout, stderr = process.communicate(timeout=60)  # 60秒超时
+                
+                success = process.returncode == 0
+                
+                with results_lock:
+                    test_results[exhibition_code] = {
+                        'success': success,
+                        'return_code': process.returncode,
+                        'stdout': stdout,
+                        'stderr': stderr
+                    }
+                    completed_count[0] += 1
+                    
+                    # 实时更新进度
+                    progress = completed_count[0] / total_configs * 100
+                    status = "✅ 成功" if success else "❌ 失败"
+                    self.log_message(f"[{progress:.1f}%] {exhibition_code}: {status}")
+                
+            except subprocess.TimeoutExpired:
+                if process:
+                    process.kill()
+                with results_lock:
+                    test_results[exhibition_code] = {
+                        'success': False,
+                        'return_code': -1,
+                        'stdout': '',
+                        'stderr': '测试超时'
+                    }
+                    completed_count[0] += 1
+                    progress = completed_count[0] / total_configs * 100
+                    self.log_message(f"[{progress:.1f}%] {exhibition_code}: ❌ 超时")
+                    
+            except Exception as e:
+                with results_lock:
+                    test_results[exhibition_code] = {
+                        'success': False,
+                        'return_code': -1,
+                        'stdout': '',
+                        'stderr': str(e)
+                    }
+                    completed_count[0] += 1
+                    progress = completed_count[0] / total_configs * 100
+                    self.log_message(f"[{progress:.1f}%] {exhibition_code}: ❌ 异常 ({e})")
+        
+        # 使用线程池并发测试
+        def test_all_in_thread():
+            try:
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                
+                self.log_message(f"开始并发测试，使用 {max_workers} 个线程...")
+                self.log_message("")
+                
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # 提交所有测试任务
+                    future_to_code = {
+                        executor.submit(test_single_config, code): code 
+                        for code in all_codes
+                    }
+                    
+                    # 等待所有任务完成
+                    for future in as_completed(future_to_code):
+                        pass  # 结果已在test_single_config中处理
+                
+                # 生成测试报告
+                self.log_message("")
+                self.log_message("=" * 80)
+                self.log_message("测试报告")
+                self.log_message("=" * 80)
+                
+                successful_tests = []
+                failed_tests = []
+                
+                for code, result in test_results.items():
+                    if result['success']:
+                        successful_tests.append(code)
+                    else:
+                        failed_tests.append((code, result))
+                
+                # 统计信息
+                success_count = len(successful_tests)
+                fail_count = len(failed_tests)
+                success_rate = success_count / total_configs * 100
+                
+                self.log_message(f"总配置数: {total_configs}")
+                self.log_message(f"测试成功: {success_count} ({success_rate:.1f}%)")
+                self.log_message(f"测试失败: {fail_count} ({100-success_rate:.1f}%)")
+                self.log_message("")
+                
+                # 成功的配置
+                if successful_tests:
+                    self.log_message("✅ 测试成功的配置:")
+                    for code in sorted(successful_tests):
+                        self.log_message(f"  - {code}")
+                    self.log_message("")
+                
+                # 失败的配置
+                if failed_tests:
+                    self.log_message("❌ 测试失败的配置:")
+                    for code, result in sorted(failed_tests):
+                        error_info = result['stderr'].strip() if result['stderr'] else str(result['return_code'])
+                        # 限制错误信息长度
+                        if len(error_info) > 100:
+                            error_info = error_info[:100] + "..."
+                        self.log_message(f"  - {code}")
+                    self.log_message("")
+                
+                # 总结
+                if fail_count == 0:
+                    self.log_message("🎉 所有配置测试通过！")
+                    self.config_editor.show_info(f"全部 {total_configs} 个展会配置测试通过！")
+                else:
+                    self.log_message(f"⚠️  有 {fail_count} 个配置测试失败，请检查上述失败项。")
+                    self.config_editor.show_warning(f"测试完成：{success_count} 个成功，{fail_count} 个失败\n详情请查看日志。")
+                
+            except Exception as e:
+                self.log_message(f"批量测试过程中出错: {e}")
+                self.config_editor.show_error(f"批量测试时出错: {e}")
+            finally:
+                self.is_running = False
+        
+        # 启动测试线程
+        thread = threading.Thread(target=test_all_in_thread, daemon=True)
         thread.start()

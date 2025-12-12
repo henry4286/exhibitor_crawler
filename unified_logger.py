@@ -26,14 +26,26 @@ class UILogHandler(logging.Handler):
         """
         super().__init__()
         self.callback = callback
+        self.ui_active = True  # 标记UI是否仍然活跃
     
     def emit(self, record: logging.LogRecord):
         """发出日志记录到UI"""
+        # 如果UI已被销毁，跳过UI输出
+        if not self.ui_active:
+            return
+            
         try:
             msg = self.format(record)
             self.callback(msg)
-        except Exception:
-            self.handleError(record)
+        except Exception as e:
+            # 检查是否是UI控件已销毁的错误
+            if "invalid command name" in str(e) or " TclError" in str(e):
+                # UI控件已被销毁，标记为非活跃状态，不再尝试写入UI
+                self.ui_active = False
+                return
+            else:
+                # 其他错误，按原有方式处理
+                self.handleError(record)
 
 
 class UnifiedLogger:

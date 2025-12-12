@@ -57,7 +57,7 @@ def replace_placeholders(template: str, data: Dict[str, Any], field_mapping: Opt
 
 def get_nested_value(data: Any, key_path: str) -> Any:
     """
-    从嵌套的JSON数据中获取指定路径的值。
+    从嵌套的JSON数据中获取指定路径的值，提取失败会给默认值不会抛出异常
     
     Args:
         data: JSON格式的数据（字典或列表）
@@ -80,23 +80,16 @@ def get_nested_value(data: Any, key_path: str) -> Any:
         return data
     
     current = data
-    try:
-        for key in key_path.split('.'):
-            if isinstance(current, dict):
-                current = current[key]
-            elif isinstance(current, list):
-                try:
-                    index = int(key)
-                    current = current[index] if index < len(current) else None
-                except ValueError:
-                    # 键不是数字，无法访问列表属性
-                    return ""
-            else:
-                return ""
-            
-            if current is None:
-                return ""
-        return current
-    except (KeyError, IndexError, ValueError, TypeError):
-        raise
+    for key in key_path.split('.'):
+        if isinstance(current, dict):
+            current = current.get(key, None)
+        elif isinstance(current, list):
+            try:
+                index = int(key)
+                current = current[index] if index < len(current) else None
+            except ValueError:
+                # 键不是数字，无法访问列表属性
+                return None
+        
+    return current
 

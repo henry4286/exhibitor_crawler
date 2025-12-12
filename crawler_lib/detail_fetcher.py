@@ -16,7 +16,7 @@ from .http_client import HttpClient
 from .data_parser import DataParser
 from .utils import get_nested_value, replace_placeholders
 
-from .crawler import BaseCrawler
+from .base_crawler import BaseCrawler
 
 class DetailFetcher(BaseCrawler):
     """
@@ -57,6 +57,10 @@ class DetailFetcher(BaseCrawler):
             联系人信息列表（必定成功返回）
         """
 
+        
+        # 类型检查
+        if self.config is None:
+            raise ValueError("配置不能为空")
         
         # 构建详情请求URL和参数
         url = str(self.config.url_detail or "")
@@ -107,7 +111,9 @@ class DetailFetcher(BaseCrawler):
         
         #print("详情响应数据:", response_data)
         # 提取联系人数据
-        contacts = self._extract_and_parse(response_data,self.config.items_key_detail,self.config.info_key)
+        items_key_detail = self.config.items_key_detail or ""
+        info_key = self.config.info_key or {}
+        contacts = self._extract_and_parse(response_data, items_key_detail, info_key)
         
         with self._stats_lock:
             self._success_count += 1
@@ -117,7 +123,7 @@ class DetailFetcher(BaseCrawler):
     def _create_empty_contact(self) -> List[Dict[str, Any]]:
         """创建空的联系人记录"""
         contact_info = {}
-        if self.config.info_key:
+        if self.config and self.config.info_key:
             for output_key in self.config.info_key.keys():
                 contact_info[output_key] = ""
         return [contact_info]

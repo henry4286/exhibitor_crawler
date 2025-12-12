@@ -10,3 +10,4 @@ config_backups/
 logs/
 build/
 dist/
+main.spec

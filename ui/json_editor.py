@@ -239,7 +239,6 @@ class JSONEditor:
         
         # 直接使用json.dumps，确保字符串被正确序列化
         result = json.dumps(self.data, ensure_ascii=False, indent=2)
-        print(f"JSON输出: {result}")  # 调试输出
         return result
     
     def set_json_string(self, json_str):

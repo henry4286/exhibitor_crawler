@@ -86,8 +86,6 @@ class UnifiedCrawler:
             log_error(f"爬取过程中发生异常: {self.exhibition_code}", exception=e)
             return False
 
-
-
 def main():
     """主函数"""
     program_start_time = datetime.now()
@@ -163,7 +161,6 @@ def main():
         # 记录程序关闭
         runtime = datetime.now() - program_start_time
         log_info(f"👋 关闭 统一爬虫程序 (运行时间: {runtime})")
-
 
 if __name__ == "__main__":
     main()
