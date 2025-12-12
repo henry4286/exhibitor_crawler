@@ -46,9 +46,6 @@ class HttpClient:
         Returns:
             处理后的(params, data)元组
         """
-        params_str = str(config.params)
-        data_str = str(config.data)
-        
         # 计算跳过的记录数
         skip_count = (page - 1) * page_size
         
@@ -58,9 +55,42 @@ class HttpClient:
             "#skipCount": str(skip_count)
         }
         
-        for placeholder, value in replacements.items():
-            params_str = params_str.replace(placeholder, value)
-            data_str = data_str.replace(placeholder, value)
+        # 处理params字段（支持字典和字符串类型）
+        if isinstance(config.params, dict):
+            # 如果是字典，进行占位符替换
+            params = {}
+            for key, value in config.params.items():
+                if isinstance(value, str):
+                    params[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
+                else:
+                    params[key] = value
+            params_str = json.dumps(params)
+        else:
+            # 如果是字符串，直接替换占位符
+            params_str = str(config.params or "")
+            for placeholder, value in replacements.items():
+                params_str = params_str.replace(placeholder, value)
+        
+        # 处理data字段（支持字典和字符串类型）
+        if isinstance(config.data, dict):
+            # 如果是字典，进行占位符替换
+            data = {}
+            for key, value in config.data.items():
+                if isinstance(value, str):
+                    data[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
+                else:
+                    data[key] = value
+            data_str = json.dumps(data)
+        elif isinstance(config.data, str):
+            # 如果是字符串（如GraphQL查询），直接替换占位符
+            data_str = config.data
+            for placeholder, value in replacements.items():
+                data_str = data_str.replace(placeholder, value)
+        else:
+            # 其他情况，转换为字符串处理
+            data_str = str(config.data or "")
+            for placeholder, value in replacements.items():
+                data_str = data_str.replace(placeholder, value)
         
         return params_str, data_str
     
@@ -316,5 +346,3 @@ class HttpClient:
             except Exception as e:
                 
                 raise RuntimeWarning(f"请求异常: {str(e)}")
-                    
-                

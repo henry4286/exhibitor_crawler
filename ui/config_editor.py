@@ -149,9 +149,9 @@ class ConfigUIEditor:
         
         for filename, config_data in self.config_files.items():
             # 获取搜索字段
-            exhibition_code = config_data.get('exhibition_code', '').lower()
-            miniprogram_name = config_data.get('miniprogram_name', '').lower()
-            url = config_data.get('url', '').lower()
+            exhibition_code = str(config_data.get('exhibition_code', '')).lower()
+            miniprogram_name = str(config_data.get('miniprogram_name', '')).lower()
+            url = str(config_data.get('url', '')).lower()
             
             # 如果搜索文本为空，显示所有；否则匹配搜索条件
             if not search_text or (search_text in exhibition_code or 
@@ -373,12 +373,17 @@ class ConfigUIEditor:
             company_info_keys_value = self.get_field_value(self.basic_fields['company_info_keys'])
             if company_info_keys_value:
                 try:
-                    company_info_keys = json.loads(company_info_keys_value)
+                    # 如果已经是字典类型，直接使用；否则尝试解析
+                    if isinstance(company_info_keys_value, dict):
+                        company_info_keys = company_info_keys_value
+                    else:
+                        company_info_keys = json.loads(company_info_keys_value)
+                    
                     if 'ID' not in company_info_keys:
                         return False, "二次请求模式下，基本配置的字段映射中必须包含'ID'字段"
                     if 'Company' not in company_info_keys:
                         return False, "二次请求模式下，基本配置的字段映射中必须包含'Company'字段"
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, TypeError):
                     return False, "基本配置的字段映射JSON格式错误"
             
             # 验证二次请求的JSON字段
@@ -570,9 +575,6 @@ class ConfigUIEditor:
         if not self.ask_yesno("确认同步", "确定要从Gitee仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
             return
         
-        # 显示同步提示
-        self.show_info("正在同步配置文件，请稍候...")
-        
         # 在后台线程中执行同步操作
         def sync_worker():
             try:
@@ -698,9 +700,6 @@ class ConfigUIEditor:
         # 启动后台线程
         push_thread = threading.Thread(target=push_worker, daemon=True)
         push_thread.start()
-        
-        # 显示推送提示
-        self.show_info("正在推送配置文件，请稍候...")
     
     def _push_complete(self, success: bool, message: str):
         """推送完成后处理"""

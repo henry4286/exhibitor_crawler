@@ -24,8 +24,8 @@ class CrawlerConfig:
     url: str
     request_method: str
     headers: dict
-    params: str
-    data: str
+    params: dict    # 修改为字典类型
+    data: dict     # 修改为字典类型
     items_key: str
     company_info_keys: dict
     
@@ -36,8 +36,8 @@ class CrawlerConfig:
     url_detail: Optional[str] = None
     request_method_detail: Optional[str] = None
     headers_detail: Optional[dict] = None
-    params_detail: Optional[str] = None
-    data_detail: Optional[str] = None
+    params_detail: Optional[dict] = None  # 修改为字典类型
+    data_detail: Optional[dict] = None   # 修改为字典类型
     items_key_detail: Optional[str] = None
     info_key: Optional[dict] = None
 
@@ -99,8 +99,8 @@ class ConfigManager:
                     url=config_data.get('url', ''),
                     request_method=config_data.get('request_method', 'POST'),
                     headers=config_data.get('headers', {}),
-                    params=config_data.get('params', ''),
-                    data=config_data.get('data', ''),
+                    params=config_data.get('params', {}),    # 修改为字典类型
+                    data=config_data.get('data', {}),        # 修改为字典类型
                     items_key=config_data.get('items_key', ''),
                     company_info_keys=config_data.get('company_info_keys', {}),
                     request_mode=config_data.get('request_mode', 'single')
@@ -111,8 +111,8 @@ class ConfigManager:
                     config.url_detail = config_data.get('url_detail')
                     config.request_method_detail = config_data.get('request_method_detail', 'GET')
                     config.headers_detail = config_data.get('headers_detail', {})
-                    config.params_detail = config_data.get('params_detail', '')
-                    config.data_detail = config_data.get('data_detail', '')
+                    config.params_detail = config_data.get('params_detail', {})  # 修改为字典类型
+                    config.data_detail = config_data.get('data_detail', {})      # 修改为字典类型
                     config.items_key_detail = config_data.get('items_key_detail', '')
                     config.info_key = config_data.get('info_key', {})
                 

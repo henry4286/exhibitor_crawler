@@ -64,35 +64,51 @@ class DetailFetcher(BaseCrawler):
         
         # 构建详情请求URL和参数
         url = str(self.config.url_detail or "")
-        params_str = str(self.config.params_detail or "")
-        data_str = str(self.config.data_detail or "")
         
-       
-        # 使用动态占位符替换（支持 #key 格式，其中key是第一次请求响应中的字段）
-        # 同时保持向后兼容：优先使用新的动态替换，如果没有#占位符则不处理
-        url = replace_placeholders(url, company, self.config.company_info_keys)
-       
-        if params_str:
-            params_str = replace_placeholders(params_str, company, self.config.company_info_keys)
-       
-        if data_str:
-            data_str = replace_placeholders(data_str, company, self.config.company_info_keys)
-      
-        # 处理params
+        # 处理params（支持字典和字符串类型）
         params = None
-        if params_str and params_str not in ("nan", "{}", ""):
-            try:
-                params = json.loads(params_str)
-            except:
-                pass
-       
-        # 处理data
+        if self.config.params_detail:
+            if isinstance(self.config.params_detail, dict):
+                # 如果是字典，进行占位符替换
+                params = {}
+                for key, value in self.config.params_detail.items():
+                    if isinstance(value, str) and '#' in value:
+                        params[key] = replace_placeholders(value, company, self.config.company_info_keys)
+                    else:
+                        params[key] = value
+            else:
+                # 如果是字符串，尝试解析为JSON
+                try:
+                    params_str = str(self.config.params_detail)
+                    params_str = replace_placeholders(params_str, company, self.config.company_info_keys)
+                    if params_str and params_str not in ("nan", "{}", ""):
+                        params = json.loads(params_str)
+                except:
+                    pass
+        
+        # 处理data（支持字典和字符串类型）
         data = None
-        if data_str and data_str not in ("nan", "{}", ""):
-            try:
-                data = json.loads(data_str)
-            except:
-                pass
+        if self.config.data_detail:
+            if isinstance(self.config.data_detail, dict):
+                # 如果是字典，进行占位符替换
+                data = {}
+                for key, value in self.config.data_detail.items():
+                    if isinstance(value, str) and '#' in value:
+                        data[key] = replace_placeholders(value, company, self.config.company_info_keys)
+                    else:
+                        data[key] = value
+            else:
+                # 如果是字符串，尝试解析为JSON
+                try:
+                    data_str = str(self.config.data_detail)
+                    data_str = replace_placeholders(data_str, company, self.config.company_info_keys)
+                    if data_str and data_str not in ("nan", "{}", ""):
+                        data = json.loads(data_str)
+                except:
+                    pass
+       
+        # 使用动态占位符替换URL
+        url = replace_placeholders(url, company, self.config.company_info_keys)
       
         # 获取请求头和方法
         headers = self.config.headers_detail or {}
