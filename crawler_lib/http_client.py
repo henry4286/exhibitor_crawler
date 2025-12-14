@@ -21,9 +21,9 @@ from unified_logger import log_request, log_error
 
 # 限流检测关键词
 RATE_LIMIT_KEYWORDS = [
-    '频繁', '限流', '访问受限', '请稍后', '请求过快','失败', '错误', 
+    '频繁', '限流', '访问受限', '请稍后', '请求过快' 
     'rate limit', 'too many', 'forbidden', 'throttle', 
-    'slow down', 'try again later', 'error'
+    'slow down', 'try again later'
 ]
 
 class HttpClient:
@@ -231,16 +231,6 @@ class HttpClient:
         """
         if not isinstance(response_data, dict):
             return True, ""  
-        
-        # 检查常见的失败标识
-        if 'success' in response_data:
-            if response_data['success'] is False or response_data['success'] == 'false':
-                return False ,"success字段为False"
-        
-        if 'error' in response_data:
-            error = response_data['error']
-            if error and error not in ['', None, 'null']:
-                return False, f"error字段表示失败: {error}"
         
         for msg_key in ['message', 'msg', 'error_msg', 'errmsg', 'error_message']:
             if msg_key in response_data:
