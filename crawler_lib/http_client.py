@@ -34,6 +34,45 @@ class HttpClient:
     """
     
     @staticmethod
+    def _process_dict_placeholders(data_dict: Any, page: int, skip_count: int) -> Any:
+        """
+        递归处理字典中的占位符
+        
+        Args:
+            data_dict: 要处理的数据（可能是字典、列表或其他类型）
+            page: 当前页码
+            skip_count: 跳过的记录数
+        
+        Returns:
+            处理后的数据
+        """
+        if isinstance(data_dict, dict):
+            processed_dict = {}
+            for key, value in data_dict.items():
+                if isinstance(value, str):
+                    # 检查是否包含#page占位符
+                    if "#page" in value:
+                        # 如果是纯#page占位符，替换为数字
+                        if value.strip() == "#page":
+                            processed_dict[key] = page  # 直接使用数字类型
+                        else:
+                            # 如果是包含#page的复合字符串，替换为字符串
+                            processed_dict[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
+                    else:
+                        # 不包含占位符，普通字符串处理
+                        processed_dict[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
+                else:
+                    # 递归处理嵌套结构
+                    processed_dict[key] = HttpClient._process_dict_placeholders(value, page, skip_count)
+            return processed_dict
+        elif isinstance(data_dict, list):
+            # 处理列表中的每个元素
+            return [HttpClient._process_dict_placeholders(item, page, skip_count) for item in data_dict]
+        else:
+            # 其他类型直接返回
+            return data_dict
+    
+    @staticmethod
     def build_request_params(config: CrawlerConfig, page: int, page_size: int = 20) -> tuple[str, str]:
         """
         构建列表页请求参数，替换分页占位符
@@ -55,31 +94,16 @@ class HttpClient:
             "#skipCount": str(skip_count)
         }
         
-        # 处理params字段（支持字典和字符串类型）
-        if isinstance(config.params, dict):
-            # 如果是字典，进行占位符替换
-            params = {}
-            for key, value in config.params.items():
-                if isinstance(value, str):
-                    params[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
-                else:
-                    params[key] = value
-            params_str = json.dumps(params)
-        else:
-            # 如果是字符串，直接替换占位符
-            params_str = str(config.params or "")
+        # 处理params字段（简化逻辑：统一转字符串处理）
+        params_str = json.dumps(config.params) if isinstance(config.params, dict) else str(config.params or "")
+        if "#page" in params_str or "#skipCount" in params_str:
             for placeholder, value in replacements.items():
                 params_str = params_str.replace(placeholder, value)
         
         # 处理data字段（支持字典和字符串类型）
         if isinstance(config.data, dict):
-            # 如果是字典，进行占位符替换
-            data = {}
-            for key, value in config.data.items():
-                if isinstance(value, str):
-                    data[key] = value.replace("#page", str(page)).replace("#skipCount", str(skip_count))
-                else:
-                    data[key] = value
+            # 使用递归处理嵌套结构中的占位符
+            data = HttpClient._process_dict_placeholders(config.data, page, skip_count)
             data_str = json.dumps(data)
         elif isinstance(config.data, str):
             # 如果是字符串（如GraphQL查询），直接替换占位符

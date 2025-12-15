@@ -269,9 +269,15 @@ class JSONEditor:
             return 'number'
         elif isinstance(value, (dict, list)):
             return 'json'
-        elif isinstance(value, str) and '#page' in value:
+        elif isinstance(value, str):
+            # 如果是纯#page占位符，识别为number类型
+            if value.strip() == '#page':
+                return 'number'
             # 如果是包含#page占位符的字符串，且看起来像数字，则识别为number类型
-            return 'number'
+            elif '#page' in value:
+                return 'number'
+            else:
+                return 'string'
         else:
             return 'string'
     

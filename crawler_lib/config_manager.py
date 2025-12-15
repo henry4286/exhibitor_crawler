@@ -123,7 +123,7 @@ class ConfigManager:
                 log_exception(f"加载配置文件失败 {json_file}: {e}")
                 continue
         
-        log_info(f"成功加载 {config_count} 个配置文件")
+        log_info(f"成功加载 {config_count} 个配置文件",ui=False)
     
     def get_config(self, exhibition_code: str) -> Optional[CrawlerConfig]:
         """

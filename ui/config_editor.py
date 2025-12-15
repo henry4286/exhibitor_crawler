@@ -501,12 +501,26 @@ class ConfigUIEditor:
             # 收集基本配置数据
             basic_data = {}
             for field, widget in self.basic_fields.items():
-                basic_data[field] = self.get_field_value(widget)
+                value = self.get_field_value(widget)
+                
+                # 特殊处理data字段
+                if field == 'data' and isinstance(value, dict):
+                    # 处理翻页占位符和字符串转义
+                    value = self._process_data_field(value)
+                
+                basic_data[field] = value
             
             # 收集二次请求数据
             advanced_data = {}
             for field, widget in self.advanced_fields.items():
-                advanced_data[field] = self.get_field_value(widget)
+                value = self.get_field_value(widget)
+                
+                # 特殊处理data_detail字段
+                if field == 'data_detail' and isinstance(value, dict):
+                    # 处理翻页占位符和字符串转义
+                    value = self._process_data_field(value)
+                
+                advanced_data[field] = value
             
             # 设置默认值
             if not basic_data.get('request_mode'):
@@ -751,6 +765,33 @@ class ConfigUIEditor:
     def ask_yesno(self, title, message):
         log_info(f"询问 ({title}): {message}", ui=False)
         return messagebox.askyesno(title, message)
+    
+    def _process_data_field(self, data_dict):
+        """
+        处理data字段中的特殊值
+        
+        Args:
+            data_dict: data字段的字典数据
+            
+        Returns:
+            处理后的字典数据
+        """
+        processed_data = {}
+        
+        for key, value in data_dict.items():
+            if key == 'query' and isinstance(value, str):
+                # 修复GraphQL查询中的双重转义：\\n -> \n
+                processed_value = value.replace('\\\\n', '\\n')
+                processed_data[key] = processed_value
+                log_info(f"修复query字段转义: {key}")
+            elif key == 'page' and isinstance(value, str) and value.strip() == '#page':
+                # 保持#page占位符的字符串形式，让运行时处理
+                processed_data[key] = value
+                log_info(f"保持翻页占位符: {key} = {value}")
+            else:
+                processed_data[key] = value
+        
+        return processed_data
     
     def ask_okcancel(self, title, message):
         log_info(f"询问 ({title}): {message}", ui=False)
