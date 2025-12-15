@@ -88,7 +88,8 @@ class BaseCrawler:
         self,
         response_data: Any,
         items_key: str,
-        field_mapping: Optional[Dict[str, str]] = None
+        field_mapping: Optional[Dict[str, str]] = None,
+        request_info: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
         通用数据提取和解析方法
@@ -99,19 +100,42 @@ class BaseCrawler:
             response_data: API响应数据
             items_key: 数据提取路径（如 "data.list"）
             field_mapping: 字段映射字典（如 {"Company": "name", "Phone": "phone"}）
+            request_info: 请求信息（用于日志记录）
         
         Returns:
-            数据列表，数据提取失败会抛出异常
+            数据列表，数据提取失败会抛出异常并记录日志
         """
-        # 1. 提取数据列表
-        items = self.data_parser.extract_items(response_data, items_key)
-        
-        # 2. 如果有字段映射，进行解析
-        if field_mapping:
-            return self.data_parser.parse_items(items, field_mapping)
-        
-        # 3. 否则返回原始items
-        return items
+        try:
+            # 1. 提取数据列表
+            items = self.data_parser.extract_items(response_data, items_key)
+            
+            # 2. 如果有字段映射，进行解析
+            if field_mapping:
+                return self.data_parser.parse_items(items, field_mapping)
+            
+            # 3. 否则返回原始items
+            return items
+            
+        except Exception as e:
+            # 记录解析异常的请求历史
+            if request_info:
+                log_request(
+                    url=request_info.get('url', ''),
+                    method=request_info.get('method', 'GET'),
+                    params=request_info.get('params', ''),
+                    data=request_info.get('data', ''),
+                    response={
+                        "error": str(e),
+                        "exception_type": type(e).__name__,
+                        "error_type": "parse_error",
+                        "response_data": response_data,
+                        "items_key": items_key,
+                        "field_mapping": field_mapping
+                    }
+                )
+            
+            # 重新抛出异常
+            raise ParseError(f"数据提取和解析失败: {e}") from e
 
     def _make_request(
         self,
@@ -120,8 +144,7 @@ class BaseCrawler:
         data_str: str = "",
         headers: Optional[Dict] = None,
         method: str = "GET",
-        context: str = "",
-
+        context: str = ""
     ) -> dict | list:
         """
         通用请求方法(适用于列表页请求)：处理请求参数、发送请求、记录日志
@@ -187,24 +210,22 @@ class BaseCrawler:
             context=f"列表页{page}"
         )
         
-        # 3. 使用通用提取和解析方法
-        try:
-            company_list = self._extract_and_parse(
-                response_data=response_data,
-                items_key=self.config.items_key,
-                field_mapping=self.config.company_info_keys,
-            )
-            
-            return company_list
-        except Exception as e:
-            
-            log_request(url=str(self.config.url),
-            params=params_str,
-            data=data_str,
-            response=response_data)
-            
-            # 将解析失败作为 ParseError 抛出，供分页引擎判断并停止
-            raise ParseError(f"解析第{page}页数据失败: {e}") from e
+        # 3. 使用通用提取和解析方法（传递请求信息用于日志）
+        request_info = {
+            'url': str(self.config.url),
+            'method': self.config.request_method,
+            'params': params_str,
+            'data': data_str
+        }
+        
+        company_list = self._extract_and_parse(
+            response_data=response_data,
+            items_key=self.config.items_key,
+            field_mapping=self.config.company_info_keys,
+            request_info=request_info
+        )
+        
+        return company_list
     
     def _delete_old_file_if_needed(self):
         """
@@ -450,8 +471,7 @@ class BaseCrawler:
                 pass
 
         return has_data
-    
-    
+
     def crawl(self) -> bool:
         """
         执行爬取流程（抽象方法，由子类实现）

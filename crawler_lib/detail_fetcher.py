@@ -126,10 +126,24 @@ class DetailFetcher(BaseCrawler):
         )
         
         #print("详情响应数据:", response_data)
-        # 提取联系人数据
+        # 提取联系人数据（传递请求信息用于日志）
         items_key_detail = self.config.items_key_detail or ""
         info_key = self.config.info_key or {}
-        contacts = self._extract_and_parse(response_data, items_key_detail, info_key)
+        
+        # 构建请求信息用于日志记录
+        request_info = {
+            'url': url,
+            'method': request_method,
+            'params': params,
+            'data': data
+        }
+        
+        contacts = self._extract_and_parse(
+            response_data, 
+            items_key_detail, 
+            info_key,
+            request_info
+        )
         
         with self._stats_lock:
             self._success_count += 1

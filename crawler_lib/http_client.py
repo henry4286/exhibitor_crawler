@@ -358,5 +358,16 @@ class HttpClient:
                     return response_data
                 
             except Exception as e:
-                
+                # 记录网络异常的请求历史
+                log_request(
+                    url=url,
+                    method=method,
+                    params=params,
+                    data=data,
+                    response={
+                        "error": str(e), 
+                        "exception_type": type(e).__name__,
+                        "error_type": "network_error"
+                    }
+                )
                 raise RuntimeWarning(f"请求异常: {str(e)}")

@@ -148,7 +148,7 @@ class UnifiedLogger:
                    params: Optional[Dict[str, Any]] = None,
                    data: Any = None, 
                    response: Any = None) -> None:
-        """记录请求参数和响应体到请求日志文件（覆盖写入）"""
+        """记录请求参数和响应体到请求日志文件（追加模式，记录全部历史）"""
         # 获取当前时间
         from datetime import datetime
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -167,18 +167,22 @@ class UnifiedLogger:
         # 记录响应
         if response is not None:
             response_str = self._safe_json(response, max_length=5000)
-            log_content += f"\n响应体: {response_str}\n{'-'*80}"
-        else:
-            log_content += f"\n{'-'*80}"
+            log_content += f"\n响应体: {response_str}"
         
-        # 直接覆盖写入文件
+        # 添加分隔符，便于区分不同请求
+        log_content += f"\n{'-'*80}\n"
+        
+        # 使用logger系统记录（追加模式，保留全部历史）
         try:
-            with open('logs/request_history.log', 'w', encoding='utf-8') as f:
-                f.write(log_content + '\n')
-        except Exception as e:
-            # 如果写入失败，回退到原有的logger方式
-            self.console(f"⚠️  日志写入失败，使用备用方式: {str(e)}")
             self._loggers['request'].debug(log_content)
+        except Exception as e:
+            # 如果logger失败，回退到手动文件写入
+            self.console(f"⚠️  日志记录失败，使用手动写入: {str(e)}")
+            try:
+                with open('logs/request_history.log', 'a', encoding='utf-8') as f:
+                    f.write(log_content + '\n')
+            except Exception as e2:
+                self.console(f"❌ 手动写入也失败: {str(e2)}")
     
     # ========== 错误日志 ==========
     def log_error(self, message: str, exception: Optional[Exception] = None) -> None:
