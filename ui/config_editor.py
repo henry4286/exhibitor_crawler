@@ -617,7 +617,9 @@ class ConfigUIEditor:
         try:
             if success:
                 log_info(f"同步成功: {message}")
-                self.show_info(f"同步成功！\n{message}")
+                # 添加备份信息到提示中
+                full_message = f"同步成功！\n\n✅ 远程配置已拉取\n✓ 本地配置已自动备份到 config_backups 目录\n\n{message}" if message else "同步成功！\n\n✅ 远程配置已拉取\n✓ 本地配置已自动备份到 config_backups 目录"
+                self.show_info(full_message)
                 # 重新加载配置文件
                 self.load_configs()
                 # 同步成功后，重置修改标志

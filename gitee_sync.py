@@ -27,6 +27,24 @@ except ImportError:
 from unified_logger import log_info, log_error, log_warning, log_exception
 
 
+def _create_backup_dir() -> str:
+    """创建备份目录（带时间戳）
+    
+    Returns:
+        备份目录路径
+    """
+    backup_base = "config_backups"
+    if not os.path.exists(backup_base):
+        os.makedirs(backup_base, exist_ok=True)
+    
+    # 创建带时间戳的备份目录
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_dir = os.path.join(backup_base, f"config_backup_{timestamp}")
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    return backup_dir
+
+
 class GiteeSync:
     """Gitee配置文件同步管理器 - 简化版本"""
     
@@ -223,6 +241,13 @@ class GiteeSync:
                 log_info("没有文件变更")
                 return True, ""
             
+            # 备份本地配置
+            backup_dir = _create_backup_dir()
+            if os.path.exists(self.local_config_path):
+                backup_config_dir = os.path.join(backup_dir, "config")
+                shutil.copytree(self.local_config_path, backup_config_dir)
+                log_info(f"本地配置已备份到: {backup_config_dir}")
+            
             # 复制远程配置目录到本地
             if os.path.exists(self.local_config_path):
                 shutil.rmtree(self.local_config_path)
@@ -297,18 +322,22 @@ class GiteeSync:
                 shutil.rmtree(remote_config_dir)
             shutil.copytree(self.local_config_path, remote_config_dir)
             
-            # 切换到仓库目录
-            os.chdir(repo_dir)
-            
-            # 添加并提交变更
-            self._run_git_command(f'git add {self.config_dir}/')
+            # 添加并提交变更（明确指定仓库目录）
+            log_info(f"执行 git add 命令在目录: {repo_dir}")
+            success_add, output_add = self._run_git_command(f'git add {self.config_dir}/', repo_dir)
+            log_info(f"git add 结果: {success_add}, 输出: {output_add}")
             
             commit_message = f"Update config directory - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            self._run_git_command(f'git commit -m "{commit_message}"')
+            log_info(f"执行 git commit 命令: {commit_message}")
+            success_commit, output_commit = self._run_git_command(f'git commit -m "{commit_message}"', repo_dir)
+            log_info(f"git commit 结果: {success_commit}, 输出: {output_commit}")
             
-            # 推送到远程 - 使用认证URL
-            success, output = self._run_git_command(f'git push {self.authenticated_url} main')
+            # 推送到 master 分支（使用 HEAD:master 确保推送当前分支到远程 master）
+            log_info(f"执行 git push 命令到远程: {self.repo_url}")
+            success, output = self._run_git_command(f'git push -u {self.authenticated_url} HEAD:master', repo_dir)
+            log_info(f"git push 结果: {success}, 输出: {output}")
             if not success:
+                log_error(f"详细错误: {output}")
                 return False, f"推送失败: {output}"
             
             log_info("配置目录推送成功")
