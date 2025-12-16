@@ -586,7 +586,7 @@ class ConfigUIEditor:
     def sync_config(self):
         """同步配置文件"""
         # 弹出确认对话框
-        if not self.ask_yesno("确认同步", "确定要从Gitee仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
+        if not self.ask_yesno("确认同步", "确定要从远程仓库同步最新的配置文件吗？\n\n这将覆盖本地的配置文件。"):
             return
         
         # 在后台线程中执行同步操作
@@ -678,7 +678,7 @@ class ConfigUIEditor:
             # 弹出对话框询问是否推送
             result = messagebox.askyesnocancel(
                 "未保存的修改",
-                "检测到配置文件有修改。\n\n是否推送到Gitee仓库？\n（是=推送，否=不推送，取消=取消关闭）"
+                "检测到配置文件有修改。\n\n是否推送到远程仓库？\n（是=推送，否=不推送，取消=取消关闭）"
             )
             
             if result is None:
@@ -721,7 +721,7 @@ class ConfigUIEditor:
         """推送完成后处理"""
         if success:
             log_info(f"推送成功: {message}")
-            messagebox.showinfo("推送成功", f"配置文件已成功推送到Gitee仓库。\n\n{message}")
+            messagebox.showinfo("推送成功", f"配置文件已成功推送到远程仓库。\n\n{message}")
             # 更新文件哈希，标记为已同步
             for filename in self.config_files:
                 file_path = os.path.join(self.config_dir, filename)

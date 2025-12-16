@@ -205,7 +205,7 @@ class GiteeSync:
     
     def pull_configs(self) -> Tuple[bool, str]:
         """从Gitee仓库拉取最新的配置目录"""
-        log_info("开始从Gitee拉取配置文件")
+        log_info("开始从远程拉取配置文件")
         
         success, temp_dir, error_msg = self._clone_repo_to_temp()
         if not success:
@@ -268,7 +268,7 @@ class GiteeSync:
     
     def push_configs(self) -> Tuple[bool, str]:
         """将本地的配置目录推送到Gitee仓库"""
-        log_info("开始推送配置文件到Gitee")
+        log_info("开始推送配置文件到远程")
         
         if not os.path.exists(self.local_config_path):
             return False, "本地配置目录不存在"
