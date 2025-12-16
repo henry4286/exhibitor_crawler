@@ -192,12 +192,21 @@ class RunConfigTab:
         # 在新线程中运行爬虫
         def run_in_thread():
             try:
-                # 构建命令
-                cmd = [
-                    'python', 'run_crawler.py', exhibition_code,
-                    '--workers', str(workers),
-                    '--start-page', str(start_page)
-                ]
+                # 构建命令 - 兼容开发与打包环境
+                import sys
+                import os
+
+                if getattr(sys, 'frozen', False):
+                    # 打包后的环境 - 通过 exe 的 --subproc 标志执行内部 run_crawler
+                    meipass = getattr(sys, '_MEIPASS', None)
+                    app_dir = meipass or os.path.dirname(sys.executable)
+                    cmd = [sys.executable, '--subproc=run_crawler', exhibition_code,
+                           '--workers', str(workers),
+                           '--start-page', str(start_page)]
+                else:
+                    cmd = ['python', 'run_crawler.py', exhibition_code,
+                           '--workers', str(workers),
+                           '--start-page', str(start_page)]
                 
                 self.log_message(f"执行命令: {' '.join(cmd)}")
                 
@@ -210,7 +219,8 @@ class RunConfigTab:
                     bufsize=1,  # 行缓冲，便于逐行读取
                     universal_newlines=True,
                     encoding='utf-8',
-                    errors='replace'
+                    errors='replace',
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8')
                 )
                 
                 # 实时读取输出，简化处理逻辑
@@ -307,8 +317,18 @@ class RunConfigTab:
         # 在新线程中运行测试
         def test_in_thread():
             try:
-                # 构建命令
-                cmd = ['python', 'test_config.py', exhibition_code]
+                # 构建命令 - 兼容开发和打包环境
+                import sys
+                import os
+                
+                if getattr(sys, 'frozen', False):
+                    # 打包后的环境 - 通过 exe 的 --subproc 参数调用内部脚本
+                    meipass = getattr(sys, '_MEIPASS', None)
+                    app_dir = meipass or os.path.dirname(sys.executable)
+                    cmd = [sys.executable, '--subproc=test_config', exhibition_code]
+                else:
+                    # 开发环境
+                    cmd = ['python', 'test_config.py', exhibition_code]
                 
                 self.log_message(f"执行命令: {' '.join(cmd)}")
                 self.log_message("")
@@ -322,7 +342,8 @@ class RunConfigTab:
                     bufsize=1,
                     universal_newlines=True,
                     encoding='utf-8',
-                    errors='replace'
+                    errors='replace',
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8')  # 确保子进程使用UTF-8编码
                 )
                 
                 # 实时读取输出，简化处理逻辑
@@ -420,8 +441,18 @@ class RunConfigTab:
             """测试单个展会配置"""
             process = None
             try:
-                # 构建命令
-                cmd = ['python', 'test_config.py', exhibition_code]
+                # 构建命令 - 兼容开发和打包环境
+                import sys
+                import os
+                
+                if getattr(sys, 'frozen', False):
+                    # 打包后的环境 - 使用 exe 的 --subproc 分发方式
+                    meipass = getattr(sys, '_MEIPASS', None)
+                    app_dir = meipass or os.path.dirname(sys.executable)
+                    cmd = [sys.executable, '--subproc=test_config', exhibition_code]
+                else:
+                    # 开发环境
+                    cmd = ['python', 'test_config.py', exhibition_code]
                 
                 # 运行进程
                 process = subprocess.Popen(
@@ -430,7 +461,8 @@ class RunConfigTab:
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding='utf-8',
-                    errors='replace'
+                    errors='replace',
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8')  # 确保子进程使用UTF-8编码
                 )
                 
                 stdout, stderr = process.communicate(timeout=60)  # 60秒超时

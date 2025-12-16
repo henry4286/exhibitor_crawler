@@ -28,7 +28,7 @@ class ConfigUIEditor:
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("爬虫配置文件编辑器")
+        self.root.title("配置文件编辑器")
         self.root.geometry("1200x800")
         
         # 配置文件目录
@@ -63,7 +63,7 @@ class ConfigUIEditor:
         main_frame.rowconfigure(1, weight=1)
         
         # 标题
-        title_label = ttk.Label(main_frame, text="爬虫配置文件编辑器", font=('Arial', 16, 'bold'))
+        title_label = ttk.Label(main_frame, text="配置文件编辑器", font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 10))
         
         # 左侧：配置列表

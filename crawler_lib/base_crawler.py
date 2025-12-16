@@ -18,6 +18,8 @@ from .http_client import HttpClient
 from .utils import get_nested_value
 from .exceptions import ParseError
  
+# 检查是否在测试配置模式中运行
+import os
 # 导入统一日志系统
 from unified_logger import (
     console, log_error, log_info, log_request, 

@@ -10,6 +10,28 @@
 """
 
 import sys
+# 先处理 --subproc 子进程分发，必须在导入 GUI 相关模块之前
+if len(sys.argv) > 1:
+    for arg in sys.argv[1:]:
+        if isinstance(arg, str) and arg.startswith("--subproc="):
+            sub_name = arg.split("=", 1)[1]
+            remaining_args = [a for a in sys.argv[1:] if not (isinstance(a, str) and a.startswith("--subproc="))]
+            try:
+                if sub_name == 'test_config':
+                    import test_config
+                    sys.argv = ['test_config.py'] + remaining_args
+                    test_config.main()
+                    sys.exit(0)
+                elif sub_name == 'run_crawler':
+                    import run_crawler
+                    sys.argv = ['run_crawler.py'] + remaining_args
+                    run_crawler.main()
+                    sys.exit(0)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                sys.exit(1)
+
 import traceback
 import tkinter as tk
 from tkinter import ttk, messagebox

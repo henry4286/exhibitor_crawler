@@ -19,6 +19,10 @@ from typing import Any, Dict, List, Tuple
 from crawler_lib.detail_fetcher import DetailFetcher
 from crawler_lib.base_crawler import BaseCrawler
 
+# 在导入 unified_logger 之前，设置环境变量避免UI回调
+import os
+os.environ['TEST_CONFIG_MODE'] = '1'
+
 
 class ConfigTester(BaseCrawler):
     """配置测试器 - 继承自BaseCrawler，使用相同的底层逻辑"""
@@ -396,10 +400,14 @@ class ConfigTester(BaseCrawler):
 def main():
     """主函数"""
     # 设置UTF-8编码，避免Windows控制台编码问题
-    import io
-    if sys.platform == "win32":
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    # 尝试将 stdout/stderr 包装为 UTF-8，确保子进程输出为 UTF-8 编码（安全回退）
+    try:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    except Exception:
+        # 在某些环境下（例如没有 buffer 属性）跳过包装，保留默认行为
+        pass
     
     if len(sys.argv) < 2:
         print("=" * 60)
