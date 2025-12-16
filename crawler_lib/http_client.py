@@ -305,6 +305,7 @@ class HttpClient:
         
         attempt = 0
         headers = headers or {}
+        headers["User-Agent"]="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf2541518) XWEB/17071"
         
         while True:
             attempt += 1
@@ -358,16 +359,41 @@ class HttpClient:
                     return response_data
                 
             except Exception as e:
-                # 记录网络异常的请求历史
-                log_request(
-                    url=url,
-                    method=method,
-                    params=params,
-                    data=data,
-                    response={
-                        "error": str(e), 
-                        "exception_type": type(e).__name__,
-                        "error_type": "network_error"
-                    }
-                )
+                # 尝试安全获取响应体文本（可能在异常前未定义 response）
+                resp_text = None
+                status_code = None
+                try:
+                    if 'response' in locals() and response is not None:
+                        status_code = getattr(response, 'status_code', None)
+                        # 有些响应可能非常大，截取前2000字符保存
+                        resp_text = getattr(response, 'text', None)
+                        if resp_text is not None:
+                            resp_text = resp_text[:500]
+                except Exception:
+                    resp_text = None
+
+                # 记录到请求历史，保存响应预览以便排查
+                try:
+                    log_request(
+                        url=url,
+                        method=method,
+                        params=params,
+                        data=data,
+                        response={
+                            "error": str(e),
+                            "exception_type": type(e).__name__,
+                            "status_code": status_code,
+                            "response_text_preview": resp_text
+                        }
+                    )
+                except Exception:
+                    pass
+
+                # 也写入错误日志（app_error.log），便于通过错误日志直接查看
+                try:
+                    preview = resp_text if resp_text is not None else ''
+                    log_error(f"请求异常: {str(e)} | status_code={status_code} | 响应前500字符: {preview}", exception=e, ui=False)
+                except Exception:
+                    pass
+
                 raise RuntimeWarning(f"请求异常: {str(e)}")

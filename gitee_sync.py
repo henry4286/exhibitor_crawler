@@ -9,6 +9,7 @@ Gitee配置文件同步模块 - 简化版本
 """
 
 import os
+import sys
 import shutil
 import tempfile
 import hashlib
@@ -17,9 +18,14 @@ import glob
 from datetime import datetime
 from typing import Tuple, List, Optional
 
-# 加载环境变量
+# 内置的Gitee认证信息（用于打包后的版本，避免暴露.env文件）
+_BUILTIN_GITEE_USERNAME = "comeonits"
+_BUILTIN_GITEE_TOKEN = "7a266102679f03a28e2f2fc566273e52"
+
+# 加载环境变量（仅用于开发环境）
 try:
     from dotenv import load_dotenv
+    # 只在开发环境加载.env（打包后不依赖.env文件）
     load_dotenv()
 except ImportError:
     pass
@@ -52,8 +58,10 @@ class GiteeSync:
         """初始化同步管理器"""
         self.repo_url = "https://gitee.com/comeon_i/crawler.git"
         self.config_dir = "config"
-        self.username = os.getenv('GITEE_USERNAME')
-        self.token = os.getenv('GITEE_TOKEN')
+        
+        # 优先使用环境变量（开发环境），否则使用内置token（打包后）
+        self.username = os.getenv('GITEE_USERNAME') or _BUILTIN_GITEE_USERNAME
+        self.token = os.getenv('GITEE_TOKEN') or _BUILTIN_GITEE_TOKEN
         
         # 构建认证URL
         self.authenticated_url = self._build_auth_url()
@@ -76,16 +84,18 @@ class GiteeSync:
             authenticated_url = self.repo_url.replace('https://', f'https://{self.username}:{self.token}@')
         return authenticated_url
     
-    def _run_git_command(self, cmd: str, cwd: str = None) -> Tuple[bool, str]:
+    def _run_git_command(self, cmd: str, cwd: str = None, git_env: dict = None) -> Tuple[bool, str]:
         """运行Git命令"""
         try:
             import subprocess
+            env = git_env or os.environ.copy()
             result = subprocess.run(
                 cmd,
                 shell=True,
                 capture_output=True,
                 text=True,
-                cwd=cwd or self.original_dir
+                cwd=cwd or self.original_dir,
+                env=env
             )
             return result.returncode == 0, result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
         except Exception as e:
@@ -104,16 +114,31 @@ class GiteeSync:
             temp_dir = tempfile.mkdtemp(prefix="gitee_sync_")
             repo_dir = os.path.join(temp_dir, "repo")
             
+            # 准备环境变量，包含 git 认证信息
+            git_env = os.environ.copy()
+            if self.token:
+                # 设置 git 环境变量，确保凭证被正确使用
+                git_env['GIT_AUTHOR_NAME'] = 'exhibitor_crawler_bot'
+                git_env['GIT_AUTHOR_EMAIL'] = 'bot@example.com'
+                git_env['GIT_COMMITTER_NAME'] = 'exhibitor_crawler_bot'
+                git_env['GIT_COMMITTER_EMAIL'] = 'bot@example.com'
+            
+            # 构建 git clone 命令，禁用交互式认证提示
+            if self.token:
+                # 使用 -c credential.helper=store 让 git 使用 URL 中的凭证而不弹出登录框
+                git_clone_cmd = f'git -c credential.helper=store -c "credential.useHttpPath=true" clone "{self.authenticated_url}" "{repo_dir}" --depth 1'
+            else:
+                git_clone_cmd = f'git clone "{self.repo_url}" "{repo_dir}" --depth 1'
+            
             # 尝试使用认证URL克隆
-            success, output = self._run_git_command(
-                f'git clone "{self.authenticated_url}" "{repo_dir}" --depth 1'
-            )
+            success, output = self._run_git_command(git_clone_cmd, git_env=git_env)
             
             # 如果认证URL失败，尝试无认证URL（fallback机制）
             if not success and self.authenticated_url != self.repo_url:
                 log_warning("认证URL克隆失败，尝试无认证URL")
                 success, output = self._run_git_command(
-                    f'git clone "{self.repo_url}" "{repo_dir}" --depth 1'
+                    f'git clone "{self.repo_url}" "{repo_dir}" --depth 1',
+                    git_env=git_env
                 )
             
             if not success:
@@ -121,8 +146,8 @@ class GiteeSync:
                 return False, "", f"克隆失败: {output}"
             
             # 设置Git用户信息
-            self._run_git_command('git config user.name "exhibitor_crawler_bot"', repo_dir)
-            self._run_git_command('git config user.email "bot@example.com"', repo_dir)
+            self._run_git_command('git config user.name "exhibitor_crawler_bot"', cwd=repo_dir, git_env=git_env)
+            self._run_git_command('git config user.email "bot@example.com"', cwd=repo_dir, git_env=git_env)
             
             return True, temp_dir, ""
             
@@ -278,6 +303,14 @@ class GiteeSync:
             return False, error_msg
         
         try:
+            # 准备环境变量，包含 git 认证信息
+            git_env = os.environ.copy()
+            if self.token:
+                git_env['GIT_AUTHOR_NAME'] = 'exhibitor_crawler_bot'
+                git_env['GIT_AUTHOR_EMAIL'] = 'bot@example.com'
+                git_env['GIT_COMMITTER_NAME'] = 'exhibitor_crawler_bot'
+                git_env['GIT_COMMITTER_EMAIL'] = 'bot@example.com'
+            
             repo_dir = os.path.join(temp_dir, "repo")
             remote_config_dir = os.path.join(repo_dir, self.config_dir)
             
@@ -324,17 +357,22 @@ class GiteeSync:
             
             # 添加并提交变更（明确指定仓库目录）
             log_info(f"执行 git add 命令在目录: {repo_dir}")
-            success_add, output_add = self._run_git_command(f'git add {self.config_dir}/', repo_dir)
+            success_add, output_add = self._run_git_command(f'git add {self.config_dir}/', cwd=repo_dir, git_env=git_env)
             log_info(f"git add 结果: {success_add}, 输出: {output_add}")
             
             commit_message = f"Update config directory - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             log_info(f"执行 git commit 命令: {commit_message}")
-            success_commit, output_commit = self._run_git_command(f'git commit -m "{commit_message}"', repo_dir)
+            success_commit, output_commit = self._run_git_command(f'git commit -m "{commit_message}"', cwd=repo_dir, git_env=git_env)
             log_info(f"git commit 结果: {success_commit}, 输出: {output_commit}")
             
-            # 推送到 master 分支（使用 HEAD:master 确保推送当前分支到远程 master）
+            # 推送到 master 分支（使用凭证 helper 避免交互式认证）
             log_info(f"执行 git push 命令到远程: {self.repo_url}")
-            success, output = self._run_git_command(f'git push -u {self.authenticated_url} HEAD:master', repo_dir)
+            if self.token:
+                push_cmd = f'git -c credential.helper=store -c "credential.useHttpPath=true" push -u {self.authenticated_url} HEAD:master'
+            else:
+                push_cmd = f'git push -u {self.repo_url} HEAD:master'
+            
+            success, output = self._run_git_command(push_cmd, cwd=repo_dir, git_env=git_env)
             log_info(f"git push 结果: {success}, 输出: {output}")
             if not success:
                 log_error(f"详细错误: {output}")

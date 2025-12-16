@@ -5,7 +5,12 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        # 不再打包.env文件，token已硬编码到gitee_sync.py中
+        ('test_config.py', '.'),
+        ('run_crawler.py', '.'),
+        ('config', 'config'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

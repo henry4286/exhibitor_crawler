@@ -8,6 +8,7 @@ import os
 import threading
 import time
 from typing import Optional
+import sys
 
 from openpyxl import Workbook
 from openpyxl.reader.excel import load_workbook
@@ -28,8 +29,15 @@ class ExcelExporter:
             output_dir: 输出目录路径，默认为脚本上一级目录的ExhibitorList文件夹
         """
         if output_dir is None:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            output_dir = os.path.join(script_dir, "..", "ExhibitorList")
+            # 当程序被 PyInstaller 打包为可执行文件时，使用可执行文件所在目录作为基准目录；
+            # 否则使用当前模块文件目录。这样打包后生成的 Excel 会保存在 exe 同目录下的 ExhibitorList 文件夹。
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                # 保持原有行为：以模块所在目录的上一级目录作为基准（项目根目录），
+                # 这样用 `python main.py` 运行时会在项目目录下创建/使用 ExhibitorList
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            output_dir = os.path.join(base_dir, "ExhibitorList")
         
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
