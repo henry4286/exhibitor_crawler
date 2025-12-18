@@ -20,14 +20,23 @@ class DataParser:
     def extract_items(response_data: Dict[str, Any], items_key: str) -> List[Dict[str, Any]]:
         """
         从API响应数据中提取指定路径的列表数据。
+        
+        支持两种响应格式：
+        1. 字典响应（常见）：{"data": [...], "total": 100}，需要通过items_key提取列表
+        2. 数组响应（特殊）：[{...}, {...}]，直接作为列表处理
+        
         如果提取到的数据是字典，会强制转化成单字典列表
         Args:
-            response_data: API响应数据
+            response_data: API响应数据（可以是字典或列表）
             items_key: 数据提取路径（如 "data.list"）
         
         Returns:
             提取的列表数据，提取失败会抛出异常
         """
+        # 支持直接返回数组格式的响应
+        if isinstance(response_data, list):
+            return response_data
+        
         if not response_data or not isinstance(response_data, dict):
             return []
         

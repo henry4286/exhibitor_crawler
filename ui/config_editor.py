@@ -370,22 +370,6 @@ class ConfigUIEditor:
             if not url_detail:
                 return False, "二次请求模式下，详情API地址不能为空"
             
-            company_info_keys_value = self.get_field_value(self.basic_fields['company_info_keys'])
-            if company_info_keys_value:
-                try:
-                    # 如果已经是字典类型，直接使用；否则尝试解析
-                    if isinstance(company_info_keys_value, dict):
-                        company_info_keys = company_info_keys_value
-                    else:
-                        company_info_keys = json.loads(company_info_keys_value)
-                    
-                    if 'ID' not in company_info_keys:
-                        return False, "二次请求模式下，基本配置的字段映射中必须包含'ID'字段"
-                    if 'Company' not in company_info_keys:
-                        return False, "二次请求模式下，基本配置的字段映射中必须包含'Company'字段"
-                except (json.JSONDecodeError, TypeError):
-                    return False, "基本配置的字段映射JSON格式错误"
-            
             # 验证二次请求的JSON字段
             json_fields = ['headers_detail', 'params_detail', 'data_detail', 'info_key']
             for field in json_fields:

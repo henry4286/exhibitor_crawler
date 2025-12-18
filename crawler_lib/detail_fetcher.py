@@ -173,8 +173,31 @@ class DetailFetcher(BaseCrawler):
         
         results_lock = threading.Lock()
         
+        # 如果配置为单线程（max_workers == 1），则改为顺序执行，避免线程池开销
+        if getattr(self, 'max_workers', 1) == 1:
+            for index, item in enumerate(companies_basic_info):
+                try:
+                    contacts_list = self.fetch_company_contacts(item)
+                    basic_info = companies_basic_info[index]
+
+                    # 将基本信息合并到每个联系人记录中
+                    for contact in contacts_list:
+                        full_record = basic_info.copy()
+                        full_record.update(contact)
+                        results.append(full_record)
+
+                    company_name = basic_info.get('Company', '未知公司')
+                    print(f"✅ 成功获取公司 {company_name} 的 {len(contacts_list)} 个联系人", flush=True)
+                except Exception as e:
+                    basic_info = companies_basic_info[index]
+                    company_name = basic_info.get('Company', '未知公司')
+                    print(f"❌ 处理公司 {company_name} 时发生异常: {e}", flush=True)
+
+            print(f"✅ 第{self.start_page}页 - 顺序批量获取完成，成功: {self._success_count}", flush=True)
+            return results
+
+        # 否则使用线程池并发执行（默认行为）
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            
             future_to_index = {
                 executor.submit(self.fetch_company_contacts, item): i 
                 for i, item in enumerate(companies_basic_info)
@@ -189,9 +212,8 @@ class DetailFetcher(BaseCrawler):
                     
                     with results_lock:
 
-                        # **关键步骤**：将基本信息合并到每个联系人记录中
+                        # 将基本信息合并到每个联系人记录中
                         for contact in contacts_list:
-                            # 创建完整记录：基本信息 + 联系人信息
                             full_record = basic_info.copy()  # 先复制基本信息
                             full_record.update(contact)  # 再添加联系人信息
                             results.append(full_record)
@@ -203,7 +225,7 @@ class DetailFetcher(BaseCrawler):
                     basic_info = companies_basic_info[index]
                     company_name = basic_info.get('Company', '未知公司')
                     print(f"❌ 处理公司 {company_name} 时发生异常: {e}", flush=True)
-        
+
         print(f"✅ 第{self.start_page}页 - 批量获取完成，成功: {self._success_count}", flush=True)
-        
+
         return results
