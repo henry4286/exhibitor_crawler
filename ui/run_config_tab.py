@@ -9,9 +9,33 @@ from tkinter import ttk, scrolledtext
 import subprocess
 import threading
 import datetime
+import os
+import sys
 
 # 导入日志系统
 from unified_logger import get_logger
+
+
+def get_exhibitor_list_path():
+    """
+    获取ExhibitorList目录路径
+    
+    复用ExcelExporter中的路径计算逻辑，确保在两种运行模式下都能正确获取路径：
+    - PyInstaller打包模式：使用可执行文件所在目录
+    - Python运行模式：使用项目根目录
+    
+    Returns:
+        str: ExhibitorList目录的完整路径
+    """
+    if getattr(sys, 'frozen', False):
+        # 当程序被 PyInstaller 打包为可执行文件时，使用可执行文件所在目录作为基准目录
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # 保持原有行为：以模块所在目录的上一级目录作为基准（项目根目录）
+        # 这样用 `python main.py` 运行时会在项目目录下创建/使用 ExhibitorList
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    return os.path.join(base_dir, "ExhibitorList")
 
 
 class RunConfigTab:
@@ -75,6 +99,7 @@ class RunConfigTab:
         ttk.Button(button_frame, text="测试全部", command=self.test_all_configs, style='Success.TButton').grid(row=0, column=1, padx=5)
         ttk.Button(button_frame, text="运行爬虫", command=self.run_crawler, style='Accent.TButton').grid(row=0, column=2, padx=5)
         ttk.Button(button_frame, text="停止运行", command=self.stop_crawler).grid(row=0, column=3, padx=5)
+        ttk.Button(button_frame, text="打开目录", command=self.open_exhibitor_folder).grid(row=0, column=4, padx=5)
         
         # 运行日志
         log_frame = ttk.LabelFrame(run_frame, text="运行日志", padding="10")
@@ -91,6 +116,33 @@ class RunConfigTab:
         
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
+    
+    def open_exhibitor_folder(self):
+        """打开ExhibitorList文件夹"""
+        try:
+            exhibitor_path = get_exhibitor_list_path()
+            
+            # 确保目录存在
+            os.makedirs(exhibitor_path, exist_ok=True)
+            
+            # 根据操作系统选择打开方式
+            import platform
+            system = platform.system()
+            
+            if system == 'Windows':
+                # Windows: 使用explorer
+                os.startfile(exhibitor_path)
+            elif system == 'Darwin':  # macOS
+                subprocess.run(['open', exhibitor_path], check=True)
+            else:  # Linux
+                subprocess.run(['xdg-open', exhibitor_path], check=True)
+            
+            self.log_message(f"已打开ExhibitorList目录: {exhibitor_path}")
+            
+        except Exception as e:
+            error_msg = f"打开ExhibitorList目录失败: {e}"
+            self.log_message(error_msg)
+            self.config_editor.show_error(error_msg)
     
     def _init_logger_ui_callback(self):
         """初始化日志系统的UI回调，将日志输出到UI窗口"""
