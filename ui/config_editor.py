@@ -49,6 +49,66 @@ class ConfigUIEditor:
         
         # 绑定窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # 程序启动时自动同步配置文件
+        self.auto_sync_on_startup()
+    
+    def auto_sync_on_startup(self):
+        """程序启动时自动同步配置文件"""
+        def startup_sync_worker():
+            try:
+                log_info("程序启动，开始自动同步配置文件...")
+                
+                # 创建Gitee同步管理器
+                sync_manager = GiteeSync()
+                
+                # 执行同步
+                success, message = sync_manager.pull_configs()
+                
+                # 在主线程中更新UI
+                self.root.after(0, lambda: self._startup_sync_complete(success, message))
+                
+            except Exception as e:
+                log_exception(f"启动时同步发生错误: {e}")
+                # 在主线程中显示错误
+                self.root.after(0, lambda: self._startup_sync_error(str(e)))
+        
+        # 启动后台线程
+        sync_thread = threading.Thread(target=startup_sync_worker, daemon=True)
+        sync_thread.start()
+    
+    def _startup_sync_complete(self, success: bool, message: str):
+        """启动同步完成后的UI更新"""
+        try:
+            if success:
+                log_info(f"启动时同步成功: {message}")
+                # 添加备份信息到提示中
+                full_message = f"启动时同步成功！\n\n✅ 远程配置已拉取\n✓ 本地配置已自动备份到 config_backups 目录\n\n{message}" if message else "启动时同步成功！\n\n✅ 远程配置已拉取\n✓ 本地配置已自动备份到 config_backups 目录"
+                self.show_info(full_message)
+                # 重新加载配置文件
+                self.load_configs()
+                # 同步成功后，重置修改标志
+                self._file_modified = False
+            else:
+                log_error(f"启动时同步失败: {message}")
+                self.show_error(f"启动时同步失败：\n{message}")
+                # 即使同步失败，也要尝试重新加载本地配置
+                self.load_configs()
+        except Exception as e:
+            log_exception(f"启动时更新UI时发生错误: {e}")
+            self.show_error(f"启动时更新UI时发生错误：\n{e}")
+    
+    def _startup_sync_error(self, error_msg: str):
+        """启动时同步错误处理"""
+        try:
+            self.show_error(f"启动时同步发生错误：\n{error_msg}")
+            # 尝试重新加载本地配置
+            try:
+                self.load_configs()
+            except:
+                pass
+        except Exception as e:
+            log_exception(f"处理启动时同步错误时发生异常: {e}")
     
     def setup_ui(self):
         """设置用户界面"""
@@ -659,22 +719,12 @@ class ConfigUIEditor:
         has_unsaved = self._file_modified or self._check_files_modified()
         
         if has_unsaved:
-            # 弹出对话框询问是否推送
-            result = messagebox.askyesnocancel(
-                "未保存的修改",
-                "检测到配置文件有修改。\n\n是否推送到远程仓库？\n（是=推送，否=不推送，取消=取消关闭）"
-            )
-            
-            if result is None:
-                # 用户选择取消，不关闭窗口
-                return
-            elif result is True:
-                # 用户选择推送，执行推送操作
-                self._push_and_close()
-                return
-            # 否则直接关闭（不推送）
+            # 检测到配置文件有修改，直接推送到远程仓库
+            log_info("检测到配置文件有修改，开始自动推送到远程仓库...")
+            self._push_and_close()
+            return
         
-        # 没有修改或用户选择不推送，直接关闭
+        # 没有修改，直接关闭
         self.root.destroy()
     
     def _push_and_close(self):
