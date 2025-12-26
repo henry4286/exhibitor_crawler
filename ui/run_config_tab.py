@@ -48,6 +48,8 @@ class RunConfigTab:
         self.current_process = None
         self._line_buffer = ''  # 初始化行缓冲区
         self.log_text = None  # 先初始化为None，在create_tab中赋值
+        self._stop_requested = False  # 停止请求标志
+        self._output_thread = None  # 输出读取线程
         self.create_tab()
         
         # 创建日志显示后，初始化日志系统的UI回调
@@ -236,8 +238,9 @@ class RunConfigTab:
         self.log_message(f"正在初始化爬虫运行...")
         self.log_message(f"目标展会: {exhibition_code}")
         
-        # 启动爬虫
+        # 启动爬虫 - 重置停止标志
         self.is_running = True
+        self._stop_requested = False
         self.log_message(f"开始运行爬虫: {exhibition_code}")
         self.log_message(f"线程数: {workers}, 起始页码: {start_page}")
         
@@ -263,6 +266,12 @@ class RunConfigTab:
                 self.log_message(f"执行命令: {' '.join(cmd)}")
                 
                 # 运行进程 - 修复编码问题和缓冲
+                # 在Windows上使用CREATE_NEW_PROCESS_GROUP以便能正确终止进程
+                import platform
+                creationflags = 0
+                if platform.system() == 'Windows':
+                    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+                
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -272,70 +281,170 @@ class RunConfigTab:
                     universal_newlines=True,
                     encoding='utf-8',
                     errors='replace',
-                    env=dict(os.environ, PYTHONIOENCODING='utf-8')
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8'),
+                    creationflags=creationflags
                 )
                 
-                # 实时读取输出，简化处理逻辑
-                while True:
+                # 实时读取输出，检查停止标志
+                while not self._stop_requested:
                     if self.current_process and self.current_process.stdout:
-                        # 使用readline逐行读取，简化处理
-                        line = self.current_process.stdout.readline()
-                        if line == '' and self.current_process.poll() is not None:
+                        # 检查进程是否已结束
+                        if self.current_process.poll() is not None:
+                            # 进程已结束，读取剩余输出
+                            remaining = self.current_process.stdout.read()
+                            if remaining:
+                                for line in remaining.splitlines():
+                                    if line:
+                                        self.log_message(line)
                             break
-                        if line:
-                            # 直接显示所有输出，不进行过滤
-                            self.log_message(line.rstrip('\n'))
+                        
+                        # 使用readline逐行读取
+                        try:
+                            line = self.current_process.stdout.readline()
+                            if line == '':
+                                if self.current_process.poll() is not None:
+                                    break
+                                continue
+                            if line:
+                                # 直接显示所有输出，不进行过滤
+                                self.log_message(line.rstrip('\n'))
+                        except Exception as read_error:
+                            # 读取出错时检查进程状态
+                            if self.current_process.poll() is not None:
+                                break
                     else:
                         break
                 
-                # 等待进程结束
-                return_code = self.current_process.poll()
+                # 检查是否是用户主动停止
+                if self._stop_requested:
+                    self.log_message("爬虫已被用户停止")
+                    return
+                
+                # 等待进程结束并获取返回码
+                return_code = self.current_process.poll() if self.current_process else -1
                 
                 if return_code == 0:
                     self.log_message("爬虫运行完成！")
-                    self.config_editor.show_info(f"展会 '{exhibition_code}' 爬虫运行完成")
-                else:
-                    self.log_message(f"爬虫运行失败，返回码: {return_code}")
-                    self.config_editor.show_error(f"展会 '{exhibition_code}' 爬虫运行失败")
+                    self._safe_show_info(f"展会 '{exhibition_code}' 爬虫运行完成")
+                elif return_code is not None:
+                    self.log_message(f"爬虫运行结束，返回码: {return_code}")
+                    if return_code != 0 and not self._stop_requested:
+                        self._safe_show_error(f"展会 '{exhibition_code}' 爬虫运行失败")
                     
             except Exception as e:
-                self.log_message(f"运行出错: {e}")
-                self.config_editor.show_error(f"运行爬虫时出错: {e}")
+                if not self._stop_requested:
+                    self.log_message(f"运行出错: {e}")
+                    self._safe_show_error(f"运行爬虫时出错: {e}")
             finally:
                 self.is_running = False
                 self.current_process = None
+                self._stop_requested = False
         
         # 启动线程
-        thread = threading.Thread(target=run_in_thread, daemon=True)
-        thread.start()
+        self._output_thread = threading.Thread(target=run_in_thread, daemon=True)
+        self._output_thread.start()
+    
+    def _safe_show_info(self, message):
+        """线程安全地显示信息对话框"""
+        try:
+            self.config_editor.root.after(0, lambda: self.config_editor.show_info(message))
+        except:
+            pass
+    
+    def _safe_show_error(self, message):
+        """线程安全地显示错误对话框"""
+        try:
+            self.config_editor.root.after(0, lambda: self.config_editor.show_error(message))
+        except:
+            pass
     
     def stop_crawler(self):
-        """停止爬虫"""
+        """停止爬虫 - 优化版本，完全异步执行，防止UI假死"""
         if not self.is_running:
             self.config_editor.show_info("当前没有运行的爬虫")
             return
         
-        if self.current_process:
+        # 立即设置停止标志，通知读取线程停止
+        self._stop_requested = True
+        self.log_message("正在停止爬虫...")
+        
+        # 在单独的线程中执行进程终止操作，避免阻塞UI
+        def stop_in_thread():
+            process = self.current_process
+            if not process:
+                self._finish_stop("爬虫已停止")
+                return
+            
             try:
-                self.current_process.terminate()
-                self.log_message("正在停止爬虫...")
+                import time
+                import platform
                 
-                # 等待进程结束
+                pid = process.pid
+                
+                # Windows 上使用 taskkill 强制终止整个进程树
+                if platform.system() == 'Windows':
+                    try:
+                        # 使用 taskkill /F /T 强制终止进程及其所有子进程
+                        kill_cmd = f'taskkill /F /T /PID {pid}'
+                        subprocess.run(kill_cmd, shell=True, capture_output=True, timeout=5)
+                    except Exception:
+                        # 如果 taskkill 失败，使用标准方法
+                        try:
+                            process.kill()
+                        except:
+                            pass
+                else:
+                    # Linux/Mac: 先发送 SIGTERM，再发送 SIGKILL
+                    try:
+                        process.terminate()
+                        time.sleep(0.3)
+                        if process.poll() is None:
+                            process.kill()
+                    except:
+                        pass
+                
+                # 短暂等待进程结束（不阻塞太久）
                 try:
-                    self.current_process.wait(timeout=5)
+                    process.wait(timeout=2)
                 except subprocess.TimeoutExpired:
-                    self.current_process.kill()
-                    self.log_message("强制停止爬虫")
+                    pass
                 
-                self.log_message("爬虫已停止")
-                self.config_editor.show_info("爬虫已停止")
+                # 关闭 stdout 管道，确保读取线程不会继续阻塞
+                try:
+                    if process.stdout:
+                        process.stdout.close()
+                except:
+                    pass
+                
+                self._finish_stop("爬虫已停止")
                 
             except Exception as e:
-                self.log_message(f"停止爬虫时出错: {e}")
-                self.config_editor.show_error(f"停止爬虫时出错: {e}")
-            finally:
-                self.is_running = False
-                self.current_process = None
+                self._finish_stop(f"停止爬虫时出错: {e}", is_error=True)
+        
+        # 启动停止线程
+        stop_thread = threading.Thread(target=stop_in_thread, daemon=True)
+        stop_thread.start()
+    
+    def _finish_stop(self, message, is_error=False):
+        """完成停止操作，重置状态并显示消息（线程安全）"""
+        def do_finish():
+            self.log_message(message)
+            self.is_running = False
+            self.current_process = None
+            # 不重置 _stop_requested，让读取线程能检测到停止请求
+            
+            if is_error:
+                self.config_editor.show_error(message)
+            else:
+                self.config_editor.show_info(message)
+        
+        # 使用 after 在主线程中执行
+        try:
+            self.config_editor.root.after(0, do_finish)
+        except:
+            # 如果 UI 已销毁，直接重置状态
+            self.is_running = False
+            self.current_process = None
     
     def test_config(self):
         """测试配置"""

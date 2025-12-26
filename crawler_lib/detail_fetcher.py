@@ -14,7 +14,7 @@ import threading
 from .config_manager import CrawlerConfig
 from .http_client import HttpClient
 from .data_parser import DataParser
-from .utils import get_nested_value, replace_placeholders
+from .utils import replace_placeholders
 
 from .base_crawler import BaseCrawler
 
@@ -40,6 +40,7 @@ class DetailFetcher(BaseCrawler):
 
         super().__init__(config.exhibition_code, max_workers)
         
+
     def fetch_company_contacts(self, company: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         获取公司的联系人信息（使用统一的无限重试机制）
@@ -49,9 +50,10 @@ class DetailFetcher(BaseCrawler):
         - 限流/失败：指数退避重试，直到成功
         - **新增**：空数据检测与重试
         - **升级**：支持动态占位符替换 #key
+        - **修复**：使用原始数据进行参数替换，避免映射后的数据路径问题
         
         Args:
-            company: 公司基本信息
+            company: 公司基本信息（已映射的数据）
         
         Returns:
             联系人信息列表（必定成功返回）
@@ -65,22 +67,36 @@ class DetailFetcher(BaseCrawler):
         # 构建详情请求URL和参数
         url = str(self.config.url_detail or "")
         
+        # **修复**：直接使用映射后的数据进行参数替换
+        # 因为传入的company是已经映射后的数据，可以直接从中获取字段值
+        
         # 处理params（支持字典和字符串类型）
         params = None
         if self.config.params_detail:
             if isinstance(self.config.params_detail, dict):
-                # 如果是字典，进行占位符替换
-                params = {}
-                for key, value in self.config.params_detail.items():
-                    if isinstance(value, str) and '#' in value:
-                        params[key] = replace_placeholders(value, company, self.config.company_info_keys)
-                    else:
-                        params[key] = value
+                # 检查整个字典是否包含占位符
+                dict_has_placeholder = any(
+                    isinstance(value, str) and '#' in value 
+                    for value in self.config.params_detail.values()
+                )
+                
+                if dict_has_placeholder:
+                    # 只有包含占位符时才遍历和替换
+                    params = {}
+                    for key, value in self.config.params_detail.items():
+                        if isinstance(value, str) and '#' in value:
+                            params[key] = replace_placeholders(value, company)
+                        else:
+                            params[key] = value
+                else:
+                    # 不包含占位符，直接复制
+                    params = self.config.params_detail.copy()
             else:
-                # 如果是字符串，尝试解析为JSON
+                # 如果是字符串，先检查是否包含占位符，再决定是否替换
                 try:
                     params_str = str(self.config.params_detail)
-                    params_str = replace_placeholders(params_str, company, self.config.company_info_keys)
+                    if '#' in params_str:
+                        params_str = replace_placeholders(params_str, company)
                     if params_str and params_str not in ("nan", "{}", ""):
                         params = json.loads(params_str)
                 except:
@@ -90,30 +106,41 @@ class DetailFetcher(BaseCrawler):
         data = None
         if self.config.data_detail:
             if isinstance(self.config.data_detail, dict):
-                # 如果是字典，进行占位符替换
-                data = {}
-                for key, value in self.config.data_detail.items():
-                    if isinstance(value, str) and '#' in value:
-                        data[key] = replace_placeholders(value, company, self.config.company_info_keys)
-                    else:
-                        data[key] = value
+                # 检查整个字典是否包含占位符
+                dict_has_placeholder = any(
+                    isinstance(value, str) and '#' in value 
+                    for value in self.config.data_detail.values()
+                )
+                
+                if dict_has_placeholder:
+                    # 只有包含占位符时才遍历和替换
+                    data = {}
+                    for key, value in self.config.data_detail.items():
+                        if isinstance(value, str) and '#' in value:
+                            data[key] = replace_placeholders(value, company)
+                        else:
+                            data[key] = value
+                else:
+                    # 不包含占位符，直接复制
+                    data = self.config.data_detail.copy()
             else:
-                # 如果是字符串，尝试解析为JSON
+                # 如果是字符串，先检查是否包含占位符，再决定是否替换
                 try:
                     data_str = str(self.config.data_detail)
-                    data_str = replace_placeholders(data_str, company, self.config.company_info_keys)
+                    if '#' in data_str:
+                        data_str = replace_placeholders(data_str, company)
                     if data_str and data_str not in ("nan", "{}", ""):
                         data = json.loads(data_str)
                 except:
                     pass
        
-        # 使用动态占位符替换URL
-        url = replace_placeholders(url, company, self.config.company_info_keys)
+        # 使用动态占位符替换URL（先检查是否包含占位符）
+        if '#' in url:
+            url = replace_placeholders(url, company)
       
         # 获取请求头和方法
         headers = self.config.headers_detail or {}
         request_method = (self.config.request_method_detail or 'GET').upper()
-        
 
         # 使用统一的带重试请求方法（带空数据检测）
         response_data = self.http_client.send_request_with_retry(

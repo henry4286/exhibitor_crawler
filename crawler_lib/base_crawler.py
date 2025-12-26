@@ -466,10 +466,43 @@ class BaseCrawler:
                     has_data = True
 
         # 启动 worker 数量等于并发限制的长期运行任务
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        try:
             workers = [executor.submit(worker_loop) for _ in range(max_workers)]
-            # 等待所有 worker 退出（遇到 stop 或者没有更多任务）
-            for f in as_completed(workers):
+            
+            # 等待所有 worker 退出，使用超时机制避免无限阻塞
+            import time
+            start_time = time.time()
+            max_wait_time = 300  # 最大等待5分钟，防止无限阻塞
+            
+            for i, f in enumerate(as_completed(workers, timeout=max_wait_time)):
+                # 检查是否已经停止
+                with counter_lock:
+                    if stop:
+                        # 如果已经停止，尝试取消剩余的任务
+                        for j in range(i + 1, len(workers)):
+                            workers[j].cancel()
+                        break
+                
+                # 检查超时
+                if time.time() - start_time > max_wait_time:
+                    log_info("分页处理超时，强制停止")
+                    with counter_lock:
+                        stop = True
+                    # 取消所有未完成的任务
+                    for j in range(i + 1, len(workers)):
+                        workers[j].cancel()
+                    break
+                    
+        except Exception as e:
+            log_error("线程池执行时发生错误", e)
+            with counter_lock:
+                stop = True
+        finally:
+            # 确保线程池被正确关闭
+            try:
+                executor.shutdown(wait=False)  # 不等待，避免阻塞
+            except Exception:
                 pass
 
         return has_data

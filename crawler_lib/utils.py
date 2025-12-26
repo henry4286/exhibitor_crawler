@@ -9,51 +9,35 @@ import re
 from typing import Any, Dict, Optional,List
 
 
-def replace_placeholders(template: str, data: Dict[str, Any], field_mapping: Optional[Dict[str, str]] = None) -> str:
+def replace_placeholders(template: str, data: Dict[str, Any]) -> str:
     """
-    动态替换字符串中的占位符 #key
-    
-    占位符格式: #key，其中 key 是第一次请求响应中的字段名
-    支持嵌套字段路径，如 #data.company.id
+    简化版占位符替换：直接从映射后的数据中获取值
     
     Args:
         template: 包含占位符的模板字符串
-        data: 第一次请求获取的数据（字典格式）
-        field_mapping: 字段映射配置（可选），用于扩展支持的占位符
+        data: 已映射的数据（如 {"Company": "公司名", "ID": "123"}）
     
     Returns:
         替换后的字符串
-    
-    Examples:
-        >>> data = {"id": "123", "name": "公司A", "info": {"city": "北京"}}
-        >>> replace_placeholders("company/#id/detail", data)
-        'company/123/detail'
-        >>> replace_placeholders("city=#info.city", data)
-        'city=北京'
     """
     if not template or not isinstance(template, str):
         return template
     
+    import re
     # 查找所有占位符 #key
     placeholder_pattern = r'#([a-zA-Z0-9._]+)'
     placeholders = re.findall(placeholder_pattern, template)
     
     result = template
     for placeholder in placeholders:
-
-        value = None
-        # 从数据中获取对应的值
-        for output_key, input_key in field_mapping.items():
-            if input_key == placeholder:
-                value = get_nested_value(data, output_key)
-                break
-        
-        # 替换占位符
-        if value is not None and value != "":
-            result = result.replace(f"#{placeholder}", str(value))
+        # 直接从映射后的数据中获取值
+        if placeholder in data:
+            value = data[placeholder]
+            if value is not None and value != "":
+                result = result.replace(f"#{placeholder}", str(value))
     
     return result
-
+        
 
 def get_nested_value(data: Any, key_path: str) -> Any:
     """
@@ -92,4 +76,3 @@ def get_nested_value(data: Any, key_path: str) -> Any:
                 return None
         
     return current
-

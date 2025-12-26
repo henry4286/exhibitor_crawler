@@ -10,12 +10,13 @@
 import logging
 import json
 import os
+import threading
 from typing import Optional, Dict, Any, Callable
 from logging.handlers import RotatingFileHandler
 
 
 class UILogHandler(logging.Handler):
-    """自定义日志处理器 - 将日志消息送到UI界面"""
+    """自定义日志处理器 - 将日志消息送到UI界面（优化线程安全版本）"""
     
     def __init__(self, callback: Callable[[str], None]):
         """
@@ -27,25 +28,62 @@ class UILogHandler(logging.Handler):
         super().__init__()
         self.callback = callback
         self.ui_active = True  # 标记UI是否仍然活跃
+        self._lock = threading.Lock()  # 添加线程锁
+        
+        # 添加错误计数器，避免频繁的错误日志
+        self._error_count = 0
+        self._max_errors = 10  # 最大错误次数
+        self._last_error_time = 0
     
     def emit(self, record: logging.LogRecord):
-        """发出日志记录到UI"""
+        """发出日志记录到UI（线程安全版本）"""
         # 如果UI已被销毁，跳过UI输出
         if not self.ui_active:
             return
             
-        try:
-            msg = self.format(record)
-            self.callback(msg)
-        except Exception as e:
-            # 检查是否是UI控件已销毁的错误
-            if "invalid command name" in str(e) or " TclError" in str(e):
-                # UI控件已被销毁，标记为非活跃状态，不再尝试写入UI
-                self.ui_active = False
+        # 使用线程锁确保线程安全
+        with self._lock:
+            # 双重检查，防止在等待锁期间状态改变
+            if not self.ui_active:
                 return
-            else:
-                # 其他错误，按原有方式处理
-                self.handleError(record)
+            
+            try:
+                msg = self.format(record)
+                self.callback(msg)
+                
+                # 成功发送后重置错误计数
+                self._error_count = 0
+                
+            except Exception as e:
+                import time
+                current_time = time.time()
+                
+                # 错误频率限制：如果错误太多，暂时禁用UI输出
+                if (self._error_count >= self._max_errors and 
+                    current_time - self._last_error_time < 30):  # 30秒内
+                    # 暂时禁用UI输出，但定期重试
+                    if current_time - self._last_error_time > 60:  # 1分钟后重试
+                        self._error_count = 0
+                    return
+                
+                self._error_count += 1
+                self._last_error_time = current_time
+                
+                # 检查是否是UI控件已销毁的错误
+                if any(err_str in str(e).lower() for err_str in [
+                    "invalid command name", "tclerror", "application has been destroyed",
+                    "can't invoke", "doesn't exist"
+                ]):
+                    # UI控件已被销毁，标记为非活跃状态，不再尝试写入UI
+                    self.ui_active = False
+                    return
+                else:
+                    # 其他错误，记录但不传播（避免日志系统本身出错）
+                    try:
+                        # 尝试输出到控制台作为备用
+                        print(f"UI日志处理器错误: {e}")
+                    except Exception:
+                        pass
 
 
 class UnifiedLogger:
