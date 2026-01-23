@@ -21,9 +21,9 @@ from unified_logger import log_request, log_error
 
 # 限流检测关键词
 RATE_LIMIT_KEYWORDS = [
-    '频繁', '限流', '访问受限', '请稍后', '请求过快' 
+    '频繁', '限流', '访问受限', '请稍后', '请求过快' ,'超时',
     'rate limit', 'too many', 'forbidden', 'throttle', 
-    'slow down', 'try again later'
+    'slow down', 'try again later','time-out'
 ]
 
 class HttpClient:
@@ -207,15 +207,17 @@ class HttpClient:
                             pass
                     raise ValueError(f"ast.literal_eval返回了非字典类型: {type(result)}")
                 except (ValueError, SyntaxError) as e3:
-                    # 所有方法都失败，抛出详细错误信息
-                    error_details = (
-                        f"无法解析响应体，尝试了以下方法均失败:\n"
-                        f"1. response.json(): {error_msg_1}\n"
-                        f"2. json.loads(): {error_msg_2}\n"
-                        f"3. ast.literal_eval(): {str(e3)}\n"
-                        f"响应内容前500字符: {response.text[:500]}"
-                    )
-                    raise ValueError(error_details)
+                    # 所有方法都失败，返回重试标记而不是抛出异常
+                    return {
+                        "__needs_retry__": True,
+                        "error": "响应非JSON格式，所有解析方法均失败",
+                        "original_text": response.text[:500],
+                        "error_details": (
+                            f"1. response.json(): {error_msg_1}\n"
+                            f"2. json.loads(): {error_msg_2}\n"
+                            f"3. ast.literal_eval(): {str(e3)}"
+                        )
+                    }
     
     @staticmethod
     def calculate_retry_delay(attempt: int, max_delay: int = 600) -> float:
@@ -253,15 +255,16 @@ class HttpClient:
         Returns:
             True表示业务成功，False表示业务失败
         """
-        if not isinstance(response_data, dict):
-            return True, ""  
+        if not isinstance(response_data, dict) and not isinstance(response_data, list):
+            return False, "请求失败，响应非字典或列表类型"  
         
-        for msg_key in ['message', 'msg', 'error_msg', 'errmsg', 'error_message']:
-            if msg_key in response_data:
-                msg = str(response_data[msg_key]).lower()
-                for keyword in RATE_LIMIT_KEYWORDS:
-                    if keyword.lower() in msg:
-                        return False, f"{msg_key}字段包含限流关键词: {msg}"
+        if isinstance(response_data, dict):
+            for msg_key in ['message', 'msg', 'error_msg', 'errmsg', 'error_message']:
+                if msg_key in response_data:
+                    msg = str(response_data[msg_key]).lower()
+                    for keyword in RATE_LIMIT_KEYWORDS:
+                        if keyword.lower() in msg:
+                            return False, f"{msg_key}字段包含限流关键词: {msg}"
         
         # 都没有检测到失败标识，认为成功
         return True, ""
@@ -330,11 +333,14 @@ class HttpClient:
                         verify=False, timeout=timeout
                     )
                 
-                response.raise_for_status()
-                
                 response_data = HttpClient.parse_response(response)
                 
-                is_success, reason = HttpClient.is_rate_limit(response_data)
+                # 检查是否需要重试（非JSON格式响应）
+                if isinstance(response_data, dict) and response_data.get("__needs_retry__"):
+                    is_success = False
+                    reason = f"响应非JSON格式需要重试: {response_data.get('error', '未知错误')}"
+                else:
+                    is_success, reason = HttpClient.is_rate_limit(response_data)
                 
                 if not is_success: 
                     wait_time = HttpClient.calculate_retry_delay(attempt)
@@ -362,8 +368,10 @@ class HttpClient:
                 # 尝试安全获取响应体文本（可能在异常前未定义 response）
                 resp_text = None
                 status_code = None
+                response = None  # 确保变量被定义
                 try:
-                    if 'response' in locals() and response is not None:
+                    # 检查是否有 response 对象可用
+                    if 'response' in locals():
                         status_code = getattr(response, 'status_code', None)
                         # 有些响应可能非常大，截取前2000字符保存
                         resp_text = getattr(response, 'text', None)

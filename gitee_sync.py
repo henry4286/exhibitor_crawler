@@ -256,11 +256,11 @@ class GiteeSync:
                 if self._has_file_changes(local_file_path, file_path):
                     changed_files.append(filename)
             
-            # 检查本地有但远程没有的文件
+            # 检查本地有但远程没有的文件（标记为本地独有，拉取时不自动删除）
             for filename in local_files:
                 remote_file_path = os.path.join(remote_config_dir, filename)
                 if not os.path.exists(remote_file_path):
-                    changed_files.append(f"[删除] {filename}")
+                    changed_files.append(f"[本地独有] {filename}")
             
             if not changed_files:
                 log_info("没有文件变更")
@@ -273,10 +273,21 @@ class GiteeSync:
                 shutil.copytree(self.local_config_path, backup_config_dir)
                 log_info(f"本地配置已备份到: {backup_config_dir}")
             
-            # 复制远程配置目录到本地
-            if os.path.exists(self.local_config_path):
-                shutil.rmtree(self.local_config_path)
-            shutil.copytree(remote_config_dir, self.local_config_path)
+            # 逐个文件复制远程配置到本地，保留本地独有文件（避免未推送文件被删除）
+            os.makedirs(self.local_config_path, exist_ok=True)
+            for file_path in glob.glob(os.path.join(remote_config_dir, "*.json")):
+                filename = os.path.basename(file_path)
+                dest_path = os.path.join(self.local_config_path, filename)
+                try:
+                    shutil.copy2(file_path, dest_path)
+                except Exception as e:
+                    log_warning(f"复制远程文件失败: {filename} -> {e}")
+
+            # 记录并保留本地独有文件（之前已在 changed_files 标记为 [本地独有]）
+            for filename in local_files:
+                remote_file_path = os.path.join(remote_config_dir, filename)
+                if not os.path.exists(remote_file_path):
+                    log_info(f"保留本地独有文件: {filename}")
             
             # 更新索引文件
             self._update_index_file()
@@ -293,7 +304,7 @@ class GiteeSync:
     
     def push_configs(self) -> Tuple[bool, str]:
         """将本地的配置目录推送到Gitee仓库"""
-        log_info("开始推送配置文件到远程")
+        #log_info("开始推送配置文件到远程")
         
         if not os.path.exists(self.local_config_path):
             return False, "本地配置目录不存在"
@@ -314,6 +325,16 @@ class GiteeSync:
             repo_dir = os.path.join(temp_dir, "repo")
             remote_config_dir = os.path.join(repo_dir, self.config_dir)
             
+            # 在推送前尝试把远程最新提交拉取到本地仓库，避免推送时出现非快进冲突
+            try:
+                success_pull, output_pull = self._run_git_command('git pull --rebase origin master', cwd=repo_dir, git_env=git_env)
+            except Exception as e:
+                success_pull, output_pull = False, str(e)
+
+            if not success_pull:
+                log_error(f"无法从远程拉取最新更改，取消推送: {output_pull}")
+                return False, f"推送取消，远程包含未合并更改或拉取失败: {output_pull}"
+
             # 更新索引文件
             self._update_index_file()
             
@@ -356,24 +377,24 @@ class GiteeSync:
             shutil.copytree(self.local_config_path, remote_config_dir)
             
             # 添加并提交变更（明确指定仓库目录）
-            log_info(f"执行 git add 命令在目录: {repo_dir}")
+            #log_info(f"执行 git add 命令在目录: {repo_dir}")
             success_add, output_add = self._run_git_command(f'git add {self.config_dir}/', cwd=repo_dir, git_env=git_env)
-            log_info(f"git add 结果: {success_add}, 输出: {output_add}")
+            #log_info(f"git add 结果: {success_add}, 输出: {output_add}")
             
             commit_message = f"Update config directory - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            log_info(f"执行 git commit 命令: {commit_message}")
+            #log_info(f"执行 git commit 命令: {commit_message}")
             success_commit, output_commit = self._run_git_command(f'git commit -m "{commit_message}"', cwd=repo_dir, git_env=git_env)
-            log_info(f"git commit 结果: {success_commit}, 输出: {output_commit}")
+            #log_info(f"git commit 结果: {success_commit}, 输出: {output_commit}")
             
             # 推送到 master 分支（使用凭证 helper 避免交互式认证）
-            log_info(f"执行 git push 命令到远程: {self.repo_url}")
+            #log_info(f"执行 git push 命令到远程: {self.repo_url}")
             if self.token:
                 push_cmd = f'git -c credential.helper=store -c "credential.useHttpPath=true" push -u {self.authenticated_url} HEAD:master'
             else:
                 push_cmd = f'git push -u {self.repo_url} HEAD:master'
             
             success, output = self._run_git_command(push_cmd, cwd=repo_dir, git_env=git_env)
-            log_info(f"git push 结果: {success}, 输出: {output}")
+            #log_info(f"git push 结果: {success}, 输出: {output}")
             if not success:
                 log_error(f"详细错误: {output}")
                 return False, f"推送失败: {output}"

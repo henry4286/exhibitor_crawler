@@ -819,11 +819,11 @@ class ConfigUIEditor:
                 # 修复GraphQL查询中的双重转义：\\n -> \n
                 processed_value = value.replace('\\\\n', '\\n')
                 processed_data[key] = processed_value
-                log_info(f"修复query字段转义: {key}")
+                log_info(f"修复query字段转义: {key}",ui=False)
             elif key == 'page' and isinstance(value, str) and value.strip() == '#page':
                 # 保持#page占位符的字符串形式，让运行时处理
                 processed_data[key] = value
-                log_info(f"保持翻页占位符: {key} = {value}")
+                log_info(f"保持翻页占位符: {key} = {value}",ui=False)
             else:
                 processed_data[key] = value
         
