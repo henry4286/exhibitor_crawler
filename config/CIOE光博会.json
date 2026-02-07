@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "CIOE光博会",
+  "miniprogram_name": "CIOE光博会",
+  "request_mode": "single",
+  "url": "https://exhibitors.cioe.cn/xcx/index.ashx",
+  "request_method": "GET",
+  "headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf2541518) XWEB/17071"
+  },
+  "params": {
+    "method": "dg_zs",
+    "pageindex": "#page",
+    "hangye": "全部行业类别",
+    "zhanguan": "全部展馆分类",
+    "zsqy": "全部展商区域",
+    "zslx": "全部展商类型"
+  },
+  "data": {},
+  "items_key": "data.zhanshang",
+  "company_info_keys": {
+    "Company": "zsmc",
+    "BoothNumber": "zwh"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

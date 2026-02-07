@@ -1,0 +1,26 @@
+{
+  "exhibition_code": "无锡13届半导体设备",
+  "miniprogram_name": "大半导体在线",
+  "request_mode": "single",
+  "url": "https://www.semipv.com/api2/api/authenticate/invitation/list-company",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "P_pageNumber": "#page",
+    "P_pagesize": 20,
+    "exhibition": "CSEAC"
+  },
+  "data": {},
+  "items_key": "content.content",
+  "company_info_keys": {
+    "Company": "companyChinaName",
+    "BoothNumber": "companyBoothNo"
+  },
+  "url_detail": "",
+  "request_method_detail": "",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

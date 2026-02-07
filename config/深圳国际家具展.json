@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "深圳国际家具展",
+  "miniprogram_name": "深圳国际家具展",
+  "request_mode": "double",
+  "url": "https://szcw.szcwexpo.com/design/v1/app/exhibitor",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "pageNo": "#page",
+    "pageSize": "10"
+  },
+  "data": {},
+  "items_key": "resultData.records",
+  "company_info_keys": {
+    "exhibitorId": "exhibitorId",
+    "Company": "brandName"
+  },
+  "url_detail": "https://szcw.szcwexpo.com/design/v1/app/exhibitor/#exhibitorId",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "resultData",
+  "info_key": {
+    "BoothNumber": "positionNumber",
+    "Phone": "phone"
+  }
+}

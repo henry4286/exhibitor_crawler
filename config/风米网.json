@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "风米网",
+  "miniprogram_name": "风米网",
+  "request_mode": "single",
+  "url": "https://api.fengm.cn/api/exhibitions/1912433990720032768/online-hall/exhibitors/search",
+  "request_method": "GET",
+  "headers": {
+    "p": "fengm",
+    "guestid": "b2e70ec1181fb7e54a3c6506cc1b9a3b58042be3c89dd57b0053522cd8702f2f"
+  },
+  "params": {
+    "searchSource": "2",
+    "exhibId": "1912433990720032768",
+    "pageNum": "#page",
+    "pageSize": "20"
+  },
+  "data": {},
+  "items_key": "data.records",
+  "company_info_keys": {
+    "Company": "companyName",
+    "BoothNumber": "halls.0.hallName"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

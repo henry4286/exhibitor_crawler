@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "储能展4.1H",
+  "miniprogram_name": "储能展",
+  "request_mode": "single",
+  "url": "https://platform.eesaenergy.com/eesa-home/exhibitor/exhibitors/applet/v1.0/listByPavilionsId",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "limit": "10",
+    "id": "30",
+    "keywords": "",
+    "year": "2025"
+  },
+  "items_key": "datas.records",
+  "company_info_keys": {
+    "Company": "exhibitorsName",
+    "BoothNumber": "position"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "大健康",
+  "miniprogram_name": "世界大健康博览会",
+  "request_mode": "single",
+  "url": "https://www.hbwhexpo.com/wmqe/api/expo/micro/exhibitors/catalog",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": "12",
+    "expoSessionId": "1aad60acc9d9415faaaf1004e5f3a51d"
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "name",
+    "Phone": "mobile",
+    "Contacts": "linkman",
+    "BoothNumber": "boothNumber"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

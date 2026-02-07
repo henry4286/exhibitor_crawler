@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "纺织工业",
+  "miniprogram_name": "纺织工业",
+  "request_mode": "single",
+  "url": "https://api.tonggao.info/api/visitor/exhibitor/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "appid": "tg8ddb5817c8a174e"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "pageSize": 0
+  },
+  "items_key": "data.datas",
+  "company_info_keys": {
+    "Company": "Company",
+    "StandNo": "StandNo",
+    "Contact": "Contact",
+    "ContactPhone": "ContactPhone",
+    "ContactEmail": "ContactEmail"
+  },
+  "url_detail": "",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

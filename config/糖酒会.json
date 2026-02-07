@@ -1,0 +1,58 @@
+{
+  "exhibition_code": "糖酒会",
+  "miniprogram_name": "全国糖酒商品交易会",
+  "request_mode": "double",
+  "url": "https://qgtjh-pc.eastfair.cn/visitor/v2/exhibitor/browse/all/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEamDzT9M4NOO+mCcaaBwVVxXGqTTtK0xlBOZ/bJUKrMMz28h7C5vjrRJ30KG/ez8kw+nyL21LlTbHE7s9DAcaZf2vHp6SUZ+hxMZD+Vx4OVSs8/lzo80KxYaPNqn7kEkK/+LSwFtdL1M6zInwAke1rj9Yj2yg+UIAhUXei6AoGxxd7h18E1SncYIPukUmWlVAsHzhxLGBP9tOeJdS6oZ4RYKXIeoSHtEZefeF/0Ne5PpFdZjPGeTCeSLhi0QVNZ+70jSDR0ZiOfQJ5NTNtnT9EOJMGGPZkoevYDS/Wd1LcvI5xPT8hle8hE3TgEdYGc2Z+P4TQ3pEta1RRke+boQK/qNYu1LJkzJtNYIDRsf1bshJFAf5AxjrLvNiDx1pKcwNfgT1w5M/Dvv5yMKwTbI5yGQ="
+  },
+  "params": {},
+  "data": {
+    "languageType": "cn",
+    "exhibitionId": "33daa57b2a73433eab29bbc04ec37650",
+    "appId": "ad1ccb865af24ad2b6ee1fe784add8ae",
+    "terminal": "wechat",
+    "miniAppid": "wxc5253efc790d0f58",
+    "token": "PBB+hfqyCn5u/Asp+KqEamDzT9M4NOO+mCcaaBwVVxXGqTTtK0xlBOZ/bJUKrMMz28h7C5vjrRJ30KG/ez8kw+nyL21LlTbHE7s9DAcaZf2vHp6SUZ+hxMZD+Vx4OVSs8/lzo80KxYaPNqn7kEkK/+LSwFtdL1M6zInwAke1rj9Yj2yg+UIAhUXei6AoGxxd7h18E1SncYIPukUmWlVAsHzhxLGBP9tOeJdS6oZ4RYKXIeoSHtEZefeF/0Ne5PpFdZjPGeTCeSLhi0QVNZ+70jSDR0ZiOfQJ5NTNtnT9EOJMGGPZkoevYDS/Wd1LcvI5xPT8hle8hE3TgEdYGc2Z+P4TQ3pEta1RRke+boQK/qNYu1LJkzJtNYIDRsf1bshJFAf5AxjrLvNiDx1pKcwNfgT1w5M/Dvv5yMKwTbI5yGQ=",
+    "subjectType": "VISITOR",
+    "pageNum": "#page",
+    "pageRows": "20",
+    "exhibitorSort": "recommend_page_view_desc",
+    "showType": "ACTOR_LIST",
+    "tagIds": "",
+    "sourceType": "2",
+    "BoothNumber": "exhibitionBoothNumber"
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "name",
+    "id": "id"
+  },
+  "url_detail": "https://qgtjh-pc.eastfair.cn/visitor/v2/exhibitor/visitor/exhibitorDetails",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/json",
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEamDzT9M4NOO+mCcaaBwVVxXGqTTtK0xlBOZ/bJUKrMMz28h7C5vjrRJ30KG/ez8kw+nyL21LlTbHE7s9DAcaZf2vHp6SUZ+hxMZD+Vx4OVSs8/lzo80KxYaPNqn7kEkK/+LSwFtdL1M6zInwAke1rj9Yj2yg+UIAhUXei6AoGxxd7h18E1SncYIPukUmWlVAsHzhxLGBP9tOeJdS6oZ4RYKXIeoSHtEZefeF/0Ne5PpFdZjPGeTCeSLhi0QVNZ+70jSDR0ZiOfQJ5NTNtnT9EOJMGGPZkoevYDS/Wd1LcvI5xPT8hle8hE3TgEdYGc2Z+P4TQ3pEta1RRke+boQK/qNYu1LJkzJtNYIDRsf1bshJFAf5AxjrLvNiDx1pKcwNfgT1w5M/Dvv5yMKwTbI5yGQ="
+  },
+  "params_detail": {},
+  "data_detail": {
+    "languageType": "cn",
+    "exhibitionId": "33daa57b2a73433eab29bbc04ec37650",
+    "appId": "ad1ccb865af24ad2b6ee1fe784add8ae",
+    "terminal": "wechat",
+    "miniAppid": "wxc5253efc790d0f58",
+    "token": "PBB+hfqyCn5u/Asp+KqEamDzT9M4NOO+mCcaaBwVVxXGqTTtK0xlBOZ/bJUKrMMz28h7C5vjrRJ30KG/ez8kw+nyL21LlTbHE7s9DAcaZf2vHp6SUZ+hxMZD+Vx4OVSs8/lzo80KxYaPNqn7kEkK/+LSwFtdL1M6zInwAke1rj9Yj2yg+UIAhUXei6AoGxxd7h18E1SncYIPukUmWlVAsHzhxLGBP9tOeJdS6oZ4RYKXIeoSHtEZefeF/0Ne5PpFdZjPGeTCeSLhi0QVNZ+70jSDR0ZiOfQJ5NTNtnT9EOJMGGPZkoevYDS/Wd1LcvI5xPT8hle8hE3TgEdYGc2Z+P4TQ3pEta1RRke+boQK/qNYu1LJkzJtNYIDRsf1bshJFAf5AxjrLvNiDx1pKcwNfgT1w5M/Dvv5yMKwTbI5yGQ=",
+    "subjectType": "VISITOR",
+    "showType": "ACTOR_DETAILS",
+    "id": "#id"
+  },
+  "items_key_detail": "data",
+  "info_key": {
+    "Email": "linkEmail",
+    "Phone": "linkMobile",
+    "Contacts": "linkName",
+    "Telephone": "telephone"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "博华店商优选",
+  "miniprogram_name": "博华店商优选",
+  "request_mode": "single",
+  "url": "https://ezbuy-hpgle.bhyx.com/api/mini_app/company/companyList",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "timestamp": "1769074272",
+    "token": "80cc5556452c19bcf0e162fff3b3d996"
+  },
+  "params": {},
+  "data": {
+    "page": "#page"
+  },
+  "items_key": "data.data",
+  "company_info_keys": {
+    "Company": "company_name",
+    "Contacts": "salesman_name",
+    "Telephone": "hotline",
+    "Email": "email"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

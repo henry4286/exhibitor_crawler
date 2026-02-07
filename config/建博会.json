@@ -1,0 +1,29 @@
+{
+  "exhibition_code": "建博会",
+  "miniprogram_name": "CBD建博会",
+  "request_mode": "single",
+  "url": "https://wx-demo-api.jc001.cn/expo/shop/search/query",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "nums": "10",
+    "hots": "1",
+    "page": "#page",
+    "eid": "110",
+    "token": "6972c7280f2f4"
+  },
+  "data": {},
+  "items_key": "data.items",
+  "company_info_keys": {
+    "Company": "company",
+    "BoothNumber": "posName",
+    "Phone": "phone"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

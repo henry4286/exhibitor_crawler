@@ -1,0 +1,27 @@
+{
+  "exhibition_code": "华食展",
+  "miniprogram_name": "",
+  "request_mode": "single",
+  "url": "https://api.huafoodexpo.com/app-api/system/dept-extend/page",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "pageNo": "#page",
+    "pageSize": "10",
+    "cityId": "1",
+    "activityId": "13"
+  },
+  "data": {},
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "booth"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

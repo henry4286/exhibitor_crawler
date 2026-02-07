@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "游艇展",
+  "miniprogram_name": "上海游艇及生活方式展",
+  "request_mode": "single",
+  "url": "https://mini.boatshowchina.com/api/company/index",
+  "request_method": "GET",
+  "headers": {
+    "Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2NTcsIm9wZW5pZCI6Im9vOHVtNUZKMVBNcm96UFAxdWFMdVJCLWNveWMiLCJtb2JpbGUiOiIxMzQ4MjQwMDM3NyIsImV4cCI6MTc3MzA0MTI1OH0.s6qpO0E1cDMc3dQugm5oIFgvKun5GD_p5f7BiNW7rT0"
+  },
+  "params": {
+    "page": "#page",
+    "openid": "oo8um5FJ1PMrozPP1uaLuRB-coyc",
+    "source_title": "default"
+  },
+  "data": {},
+  "items_key": "data.list.data",
+  "company_info_keys": {
+    "BoothNumber": "pos_no",
+    "Company": "title"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

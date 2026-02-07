@@ -10,7 +10,7 @@ import json
 import time
 import random
 from typing import Any, Dict, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote
 
 import requests
 
@@ -314,6 +314,20 @@ class HttpClient:
             attempt += 1
             
             try:
+                # 对 params 中可能已经被百分号编码的值进行一次解码，
+                # 防止 requests 在构建查询字符串时把 '%' 再次编码成 '%25'
+                if params and isinstance(params, dict):
+                    try:
+                        decoded_params = {}
+                        for k, v in params.items():
+                            if isinstance(v, str) and '%' in v:
+                                decoded_params[k] = unquote(v)
+                            else:
+                                decoded_params[k] = v
+                        params = decoded_params
+                    except Exception:
+                        # 解码失败时保持原样
+                        pass
                 # 发送请求
                 if method.upper() == 'POST':
                     content_type = headers.get('Content-Type', '').lower()

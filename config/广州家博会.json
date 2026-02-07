@@ -1,0 +1,34 @@
+{
+  "exhibition_code": "广州家博会",
+  "miniprogram_name": "中国家博会CIFF",
+  "request_mode": "double",
+  "url": "https://wx-demo-api.jc001.cn/expo/shop/search/query",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "nums": "10",
+    "hots": "1",
+    "page": "#page",
+    "eid": "80",
+    "token": "6933f77155cf7"
+  },
+  "data": {},
+  "items_key": "data.items",
+  "company_info_keys": {
+    "id": "id",
+    "Company": "company"
+  },
+  "url_detail": "https://wx-demo-api.jc001.cn/expo/shop/workers",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "eid": "80",
+    "sid": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "data",
+  "info_key": {
+    "Contacts": "user.nickname",
+    "Phone": "user.phone"
+  }
+}

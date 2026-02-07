@@ -1,0 +1,33 @@
+{
+  "exhibition_code": "博华家具展",
+  "miniprogram_name": "博华家具优选",
+  "request_mode": "single",
+  "url": "https://www.jiagle.com/jiaju/api/youxuan/yunzhan/expo-list",
+  "request_method": "POST",
+  "headers": {},
+  "params": {},
+  "data": {
+    "expo_id": "97",
+    "key_words": "",
+    "hall_nos": [],
+    "category_id": [],
+    "page": "#page",
+    "track": {
+      "utm_campaign": "FUR-menu",
+      "utm_medium": "social",
+      "utm_source": "wechat"
+    }
+  },
+  "items_key": "data.data",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "booth.booth_no"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

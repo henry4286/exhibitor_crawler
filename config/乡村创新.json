@@ -1,0 +1,34 @@
+{
+  "exhibition_code": "乡村创新",
+  "miniprogram_name": "IRID EXPO乡村创新",
+  "request_mode": "double",
+  "url": "https://iridexpo.digitalexpo.com/webapi/digital-expo-main/api/v2/app/search/exhibitors",
+  "request_method": "GET",
+  "headers": {
+    "x-ca-exhibition-id": "10015032025040900017441798592311114716835502328"
+  },
+  "params": {
+    "pageNum": "#page",
+    "pageSize": "20"
+  },
+  "data": {},
+  "items_key": "resultInfo.list",
+  "company_info_keys": {
+    "id": "exhibitorId",
+    "Company": "exhibitorName"
+  },
+  "url_detail": "https://iridexpo.digitalexpo.com/webapi/digital-expo-main/api/v2/app/exhibitor/detail/#id",
+  "request_method_detail": "GET",
+  "headers_detail": {
+    "x-ca-exhibition-id": "10015032025040900017441798592311114716835502328",
+    "X-Ca-Tenant-Id": "10014032025040900017441791548955154886543449309",
+    "X-Access-Lang": "zh-cn"
+  },
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "resultInfo.exhibitorRoomInfo",
+  "info_key": {
+    "Contacts": "buttonName",
+    "Phone": "buttonMobileLink"
+  }
+}

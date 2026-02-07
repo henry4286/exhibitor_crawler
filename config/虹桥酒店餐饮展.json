@@ -1,0 +1,33 @@
+{
+  "exhibition_code": "虹桥酒店餐饮展",
+  "miniprogram_name": "HOTELEX GO",
+  "request_mode": "single",
+  "url": "https://event.hotelex.cn/api/exhibition_list",
+  "request_method": "GET",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {
+    "expo_alias": "SH%2CSFE%2CLBH",
+    "page": "#page",
+    "limit": "10",
+    "openid": "ocFU35PUBj6iAYb16uwE51ZC1N9o",
+    "token": "590a80c7a1c2dd3c39f708175573aaa1",
+    "time": "1770449372000"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "company_cn",
+    "BoothNumber": "booth",
+    "itemid": "itemid",
+    "exhibitor_id": "exhibitor_id"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

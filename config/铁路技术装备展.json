@@ -1,0 +1,25 @@
+{
+  "exhibition_code": "铁路技术装备展",
+  "miniprogram_name": "ModernRailways展览会",
+  "request_mode": "single",
+  "url": "https://dtz.zbase.cn//xcx/jiekou/handle.ashx",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "method": "sel_zslist",
+    "pageindex": "#page"
+  },
+  "data": {},
+  "items_key": "data.zslist",
+  "company_info_keys": {
+    "Company": "gsmc_cn",
+    "BoothNumber": "zwh"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

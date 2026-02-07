@@ -1,0 +1,36 @@
+{
+  "exhibition_code": "SIAL",
+  "miniprogram_name": "SIAL在线",
+  "request_mode": "single",
+  "url": "https://mp.sialchina.cn/wechatservice/exhibitor/findExbibitorsDirectoriesSial",
+  "request_method": "GET",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {
+    "spnosorId": "1",
+    "keyword": "",
+    "indurstryId": "0",
+    "categoryIds": "",
+    "exhibitionAreas": "",
+    "cityIds": "",
+    "cityCategory": "1",
+    "pageNumber": "#page",
+    "pageSize": "6",
+    "customerKey": "sial",
+    "tagId": "0"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "company",
+    "BoothNumber": "boothNumber"
+  },
+  "url_detail": null,
+  "request_method_detail": null,
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

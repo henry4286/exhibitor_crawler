@@ -18,3 +18,5 @@ python-dotenv>=1.0.0
 
 # 打包工具
 pyinstaller>=5.1
+
+bs4>=4.10.0

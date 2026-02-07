@@ -1,0 +1,26 @@
+{
+  "exhibition_code": "染料展",
+  "miniprogram_name": "",
+  "request_mode": "single",
+  "url": "https://webapi.digitalexpo.com/api/v2/app/search/exhibitors",
+  "request_method": "GET",
+  "headers": {
+    "X-Ca-Exhibition-Id": "10015032024010300017042515492641268415812426120"
+  },
+  "params": {
+    "pageNum": "#page",
+    "pageSize": "20"
+  },
+  "data": {},
+  "items_key": "resultInfo.list",
+  "company_info_keys": {
+    "company": "exhibitorName"
+  },
+  "url_detail": "",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

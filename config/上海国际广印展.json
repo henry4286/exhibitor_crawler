@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "上海国际广印展",
+  "miniprogram_name": "上海国际广印展",
+  "request_mode": "single",
+  "url": "https://api.tonggao.info/api/visitor/exhibitor/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "appid": "tg8d78b9a6fd68b2f"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "pageSize": 0
+  },
+  "items_key": "data.datas",
+  "company_info_keys": {
+    "Company": "Company",
+    "StandNo": "StandNo",
+    "Contact": "Contact",
+    "ContactPhone": "ContactPhone",
+    "ContactEmail": "ContactEmail"
+  },
+  "url_detail": null,
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

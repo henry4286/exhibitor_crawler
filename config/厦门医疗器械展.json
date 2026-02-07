@@ -1,0 +1,27 @@
+{
+  "exhibition_code": "厦门医疗器械展",
+  "miniprogram_name": "CACLP+",
+  "request_mode": "single",
+  "url": "https://miniapi.caclp.com/api/company/hot",
+  "request_method": "GET",
+  "headers": {
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9zaWQiOiIyIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IjE1MDAwNzcyNTE1IiwiYXV0aF90aW1lIjoiMjAyNS0wOS0xMlQwNzoxNDowNC45ODM4OTcwWiIsImV4cCI6MTgzNTQyMTI0NCwiaXNzIjoiQ0FDTFBQTFVTIiwiYXVkIjoiQ0xPVURJTiJ9.fH-hxDam2WPCQmxUZJ7QnFKkOmpisuQe8VId6dTZPUI"
+  },
+  "params": {
+    "page": "#page",
+    "limit": "10"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "company_name",
+    "BoothNumber": "booth_nums"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

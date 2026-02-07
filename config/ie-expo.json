@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "ie-expo",
+  "miniprogram_name": "中国环博会数字展厅网页",
+  "request_mode": "single",
+  "url": "https://cloud.ie-expo.cn/eip-web-business/api/set/serveCatalogue/selectByTypeFocusCata",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "siteToken": "c5930f231d99c5df1fcc8a52ba60fc9c",
+    "pid": "13008"
+  },
+  "params": {},
+  "data": {
+    "projectId": "13008",
+    "page": "#page",
+    "rows": "20"
+  },
+  "items_key": "rows",
+  "company_info_keys": {
+    "Company": "companyName",
+    "Telephone": "tel",
+    "BoothNumber": "boothNum"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

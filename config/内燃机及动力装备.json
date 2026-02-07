@@ -1,0 +1,34 @@
+{
+  "exhibition_code": "内燃机及动力装备",
+  "miniprogram_name": "内燃机及动力装备",
+  "request_mode": "single",
+  "url": "https://www.zhanxiaobang.cn/api-v2//exiexhibitor/search",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "wx_appid": "wxa6021498fb7b42d0",
+    "token": "gyh_zhanshang_wxapp",
+    "exi_id": 8609,
+    "page_index": "#page",
+    "page_size": 20
+  },
+  "items_key": "data.CompanyAndBuildings",
+  "company_info_keys": {
+    "Website": "web",
+    "Booth": "buildingandposition.0",
+    "Email": "email",
+    "Phone": "contactor_mobile",
+    "Contacts": "contactor",
+    "Company": "company_name"
+  },
+  "url_detail": "",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

@@ -1,0 +1,26 @@
+{
+  "exhibition_code": "UASE无人机展",
+  "miniprogram_name": "UASE无人机展",
+  "request_mode": "single",
+  "url": "https://apiv2.uase.com/api/User/ProductRelevanceSearch?",
+  "request_method": "GET",
+  "headers": {
+    "authorization": "Bearer VUETXDKZVKXF7NZON91RHSDGOB0R39AK"
+  },
+  "params": {
+    "size": "10"
+  },
+  "data": {},
+  "items_key": "obj.data",
+  "company_info_keys": {
+    "BoothNumber": "exhibition",
+    "Company": "cp_name"
+  },
+  "url_detail": "",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

@@ -1,0 +1,35 @@
+{
+  "exhibition_code": "LEC授权展",
+  "miniprogram_name": "LEC授权展",
+  "request_mode": "double",
+  "url": "https://mm.licensingexpochina.com/api/brand/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "authorization": "eyJhbGciOiJIUzUxMiJ9.eyJtbTpsZWM6bG9naW5fdXNlcl9rZXkiOiJtZW1iZXI6MjIzNTAifQ.OFsgxBh1bKvPDPyVBUFT7-Jx3whpfNCO83AM6fewiqaWq9U-Cz3I1-OU_3Xhe7DLhEtyaFZkkboQy8Mpn6JSWg"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": "28"
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "name",
+    "id": "id"
+  },
+  "url_detail": "https://mm.licensingexpochina.com/api/brand/detail",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "authorization": "eyJhbGciOiJIUzUxMiJ9.eyJtbTpsZWM6bG9naW5fdXNlcl9rZXkiOiJtZW1iZXI6MjIzNTAifQ.OFsgxBh1bKvPDPyVBUFT7-Jx3whpfNCO83AM6fewiqaWq9U-Cz3I1-OU_3Xhe7DLhEtyaFZkkboQy8Mpn6JSWg"
+  },
+  "params_detail": {},
+  "data_detail": {
+    "brandId": "#id"
+  },
+  "items_key_detail": "data",
+  "info_key": {
+    "BoothNumber": "boothCode"
+  }
+}

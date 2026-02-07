@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "半导体供应商",
+  "miniprogram_name": "大半导体在线",
+  "request_mode": "double",
+  "url": "https://www.semipv.com/site/exhibition/web/site/companys",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "page": "#page",
+    "size": "10"
+  },
+  "data": {},
+  "items_key": "list",
+  "company_info_keys": {
+    "ID": "id",
+    "Company": "company_china_name"
+  },
+  "url_detail": "https://www.semipv.com/site/exhibition/web/site/company/info",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "id": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "data",
+  "info_key": {
+    "Contacts": "linkman",
+    "Phone": "phone",
+    "Email": "email"
+  }
+}

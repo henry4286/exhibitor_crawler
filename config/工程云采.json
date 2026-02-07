@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "工程云采",
+  "miniprogram_name": "",
+  "request_mode": "single",
+  "url": "https://mm.wocasia.cn/api/brand/hi",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Authorization": "eyJhbGciOiJIUzUxMiJ9.eyJtbTp3b2NhOmxvZ2luX3VzZXJfa2V5IjoibWVtYmVyOjE0ODU1MCJ9.CeHYUkKN0ZtPLd2dnzEwGZBYQq36zkLyczzx_D6tQLgf_nYWWiR4IkYv6I6FXfrubJExSo-4bjcyY7ICq5inpg"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": 10
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "company": "name",
+    "booth": "boothCode"
+  },
+  "url_detail": "",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

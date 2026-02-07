@@ -1,0 +1,26 @@
+{
+  "exhibition_code": "中国供热展",
+  "miniprogram_name": "中国供热展",
+  "request_mode": "single",
+  "url": "https://mp.ishc-cihe.com/api/v1/exhibitor/list",
+  "request_method": "POST",
+  "headers": {
+    "udid": "20260115160512f46a0627e7bbef416e444fa17e99b415.dcf8",
+    "Content-Type": "application/json;charset=UTF-8"
+  },
+  "params": {
+    "type": "exhibitor"
+  },
+  "data": {},
+  "items_key": "data.items",
+  "company_info_keys": {
+    "Company": "name"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

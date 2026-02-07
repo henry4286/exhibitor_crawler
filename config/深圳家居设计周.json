@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "深圳家居设计周",
+  "miniprogram_name": "SZCW家居严选",
+  "request_mode": "double",
+  "url": "https://szcw.szcwexpo.com/design/v1/app/exhibitor",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "pageNo": "#page",
+    "pageSize": "10"
+  },
+  "data": {},
+  "items_key": "resultData.records",
+  "company_info_keys": {
+    "Company": "companyName",
+    "exhibitorId": "exhibitorId"
+  },
+  "url_detail": "https://szcw.szcwexpo.com/design/v1/app/exhibitor/#exhibitorId",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "resultData",
+  "info_key": {
+    "BoothNumber": "positionNumber",
+    "Telephone": "phone"
+  }
+}

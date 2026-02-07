@@ -11,6 +11,5 @@ logs/
 build/
 dist/
 main.spec
-config/
 plus/
 build.py

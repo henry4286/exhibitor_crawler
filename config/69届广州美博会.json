@@ -1,0 +1,38 @@
+{
+  "exhibition_code": "69届广州美博会",
+  "miniprogram_name": "美博会",
+  "request_mode": "double",
+  "url": "https://applet.beautyisp.com/api/invite/exhibitor/user/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": "10",
+    "exhibitorId": "14"
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "exhibitorId": "exhibitorId",
+    "applyId": "applyId",
+    "ID": "exhibitorId",
+    "Company": "fullUser"
+  },
+  "url_detail": "https://applet.beautyisp.com/api/invite/exhibitor/user/info",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {
+    "applyId": "#applyId",
+    "exhibitorId": "#exhibitorId"
+  },
+  "items_key_detail": "data",
+  "info_key": {
+    "Phone": "contactNumber",
+    "Company": "fullUser",
+    "BoothNumber": "hallBoothNumber",
+    "BoothArea": "exhibitArea"
+  }
+}

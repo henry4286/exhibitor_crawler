@@ -1,0 +1,42 @@
+{
+  "exhibition_code": "纺织面料展",
+  "miniprogram_name": "intertextile PLUS",
+  "request_mode": "double",
+  "url": "https://izt.eastfair.cn/visitor/v2/exhibitor/browse/all/list",
+  "request_method": "POST",
+  "headers": {
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEahfYzgBPZbZYNUFqcwk32S6edaEYDOOz1woSLWt3EtwhGLHBfB9z/XpquNNTrJcaNby5FjBnHbxTlzXAgN/CbytnELg7oSOimeJuWhBc8FyztuzxWL8QkbH5IYziLCLbuv9vXE4AygmMh5vOMqQ1qQKkULxOL0m+zTxBKAUnF0neIFv14FP6zZBIyVtzOvhF6FotIof6RTtRe1N/polVkbNYCs78lWlJov0QcOXrsr8GNTdpm3w8HMaDskV+pbE8gFZvutXR09butQjsONwIXWWgqcCmPOorLh6NrVSFpaUFkST6+9h4qoxx9f4Xm5nvYOXbx1+SPpziRQYhm5VGYOIjnLlNbdIrSmi15Jn3z/LHIaxgcE3yntu+UuT+j7yP6rUm5ahFdj/A7azEaT8bZ86QwbPyXAUbWevlkRuVsBysS/s86IOkG373tHMZjpGNgvMjvBG4cbjsTnnYiwkOQNgW6AwxuLZm+vVv1EHtVvm+7bWeHcwX1T12jdKB3/++iWlNmY1/x5X6yWHQM6KeD34YYyqY8m1k2TdSq0vtXeZQ",
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "exhibitionId": "0d32d96e5fa34ebe8a482c21827be4b9",
+    "appId": "81cb5253ce3144adbbae3bd8e0fe2f9d",
+    "pageNum": "#page",
+    "sourceType": "2"
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "id": "id",
+    "Company": "name",
+    "BoothNumber": "exhibitionBoothNumber"
+  },
+  "url_detail": "https://izt.eastfair.cn/visitor/v2/exhibitor/visitor/exhibitorDetails",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEahfYzgBPZbZYNUFqcwk32S6edaEYDOOz1woSLWt3EtwhGLHBfB9z/XpquNNTrJcaNby5FjBnHbxTlzXAgN/CbytnELg7oSOimeJuWhBc8FyztuzxWL8QkbH5IYziLCLbuv9vXE4AygmMh5vOMqQ1qQKkULxOL0m+zTxBKAUnF0neIFv14FP6zZBIyVtzOvhF6FotIof6RTtRe1N/polVkbNYCs78lWlJov0QcOXrsr8GNTdpm3w8HMaDskV+pbE8gFZvutXR09butQjsONwIXWWgqcCmPOorLh6NrVSFpaUFkST6+9h4qoxx9f4Xm5nvYOXbx1+SPpziRQYhm5VGYOIjnLlNbdIrSmi15Jn3z/LHIaxgcE3yntu+UuT+j7yP6rUm5ahFdj/A7azEaT8bZ86QwbPyXAUbWevlkRuVsBysS/s86IOkG373tHMZjpGNgvMjvBG4cbjsTnnYiwkOQNgW6AwxuLZm+vVv1EHtVvm+7bWeHcwX1T12jdKB3/++iWlNmY1/x5X6yWHQM6KeD34YYyqY8m1k2TdSq0vtXeZQ",
+    "Content-Type": "application/json"
+  },
+  "params_detail": {},
+  "data_detail": {
+    "exhibitionId": "0d32d96e5fa34ebe8a482c21827be4b9",
+    "appId": "81cb5253ce3144adbbae3bd8e0fe2f9d",
+    "id": "#id"
+  },
+  "items_key_detail": "data",
+  "info_key": {
+    "Contacts": "linkName",
+    "Phone": "linkMobile",
+    "Email": "linkEmail"
+  }
+}

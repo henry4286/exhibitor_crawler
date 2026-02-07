@@ -1,0 +1,42 @@
+{
+  "exhibition_code": "API制药家",
+  "miniprogram_name": "API制药家",
+  "request_mode": "double",
+  "url": "https://www.apichina.com.cn/api.php",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {
+    "m": "showarea.company_list"
+  },
+  "data": {
+    "page": "#page",
+    "pagesize": "10"
+  },
+  "items_key": "rst",
+  "company_info_keys": {
+    "ID": "id",
+    "Company": "companyName"
+  },
+  "url_detail": "https://www.apichina.com.cn/api.php",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params_detail": {
+    "m": "showarea.company_detail"
+  },
+  "data_detail": {
+    "id": "#ID"
+  },
+  "items_key_detail": "rst",
+  "info_key": {
+    "BoothNumber": "boothNo",
+    "Email": "email",
+    "Phone": "telephoneNumber",
+    "BoothArea": "boothArea",
+    "Contacts": "contacts",
+    "Telephone": "phone"
+  }
+}

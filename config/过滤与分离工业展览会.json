@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "过滤与分离工业展览会",
+  "miniprogram_name": "",
+  "request_mode": "single",
+  "url": "https://mm-fsa.imconlinereg.com/api/brand/hi",
+  "request_method": "GET",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "authorization": "eyJhbGciOiJIUzUxMiJ9.eyJtbTpmc2E6bG9naW5fdXNlcl9rZXkiOiJtZW1iZXI6MTQzNTE5In0.y0i5JJgwP3arri--batl1a4QsNHePgnAOOv0pq4xLQUXmiphxa982BDgXGVkkGbn4lABRH0S31K0L6RRnAF_DA"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": 10
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "boothCode"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

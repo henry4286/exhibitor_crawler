@@ -1,0 +1,40 @@
+{
+  "exhibition_code": "深圳显示屏与网联汽车",
+  "miniprogram_name": "励展通+",
+  "request_mode": "double",
+  "url": "https://directory.reedexhibitions.com.cn/api/v5/companyProfiles/listPage",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {
+    "eventCode": "CTZ",
+    "pageNo": "#page",
+    "pageSize": "30"
+  },
+  "data": {
+    "companyProfileName": "",
+    "orderBy": "0",
+    "eventEditionIds": [
+      "eve-a07a6dd5-bf77-482a-b256-6b7c41a20352"
+    ]
+  },
+  "items_key": "resultList.rows",
+  "company_info_keys": {
+    "id": "id",
+    "Company": "name"
+  },
+  "url_detail": "https://directory.reedexhibitions.com.cn/api/v4/getExhibitorDetail",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "companyProfileId": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "resultList",
+  "info_key": {
+    "Email": "companyEmail",
+    "Telephone": "telephone",
+    "BoothNumber": "booth.0"
+  }
+}

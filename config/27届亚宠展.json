@@ -1,0 +1,24 @@
+{
+  "exhibition_code": "27届亚宠展",
+  "miniprogram_name": "亚宠观展小助手",
+  "request_mode": "single",
+  "url": "https://online.petfairasia.com/zh-cn/como_api/institutions/get_list",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "page": "#page"
+  },
+  "data": {},
+  "items_key": "data.rows",
+  "company_info_keys": {
+    "Company": "title.value",
+    "BoothNumber": "subTitleBefore.value.0.value"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

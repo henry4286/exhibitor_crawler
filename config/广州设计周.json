@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "广州设计周",
+  "miniprogram_name": "广州设计周GZDW",
+  "request_mode": "single",
+  "url": "https://ss.tonggao.info/api/visitor/exhibitor/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "pageSize": "0",
+    "appId": "tg8dd7695e3e94a2a"
+  },
+  "items_key": "data.datas",
+  "company_info_keys": {
+    "Company": "Company",
+    "BoothNumber": "Hall",
+    "Contacts": "Contact",
+    "Email": "ContactEmail"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

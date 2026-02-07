@@ -1,0 +1,29 @@
+{
+  "exhibition_code": "光博会",
+  "miniprogram_name": "慕尼黑上海光博会",
+  "request_mode": "single",
+  "url": "https://lc-api-1.world-of-photonics-china.com.cn/api/exhibitor/page",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": "20"
+  },
+  "items_key": "data.records",
+  "company_info_keys": {
+    "Company": "cnName",
+    "BoothNumber": "exhibitionPosNo",
+    "Email": "email",
+    "Telephone": "tel"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

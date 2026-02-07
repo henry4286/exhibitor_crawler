@@ -1,0 +1,38 @@
+{
+  "exhibition_code": "虹桥国际橡塑展",
+  "miniprogram_name": "CHINAOLAS iVisit观展通",
+  "request_mode": "double",
+  "url": "https://appadmin.adsaleinfo.com/api/Supplier/List",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "size": 20
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "id": "id",
+    "CompanyId": "CompanyId",
+    "Company": "name",
+    "BoothNumber": "BoothNo"
+  },
+  "url_detail": "https://appadmin.adsaleinfo.com/api/Supplier/Detail",
+  "request_method_detail": "GET",
+  "headers_detail": {
+    "content-type": "application/json",
+    "version": "v2"
+  },
+  "params_detail": {
+    "id": "#id",
+    "CompanyId": "#CompanyId"
+  },
+  "data_detail": {},
+  "items_key_detail": "data",
+  "info_key": {
+    "Telephone": "Tel",
+    "Email": "Email"
+  }
+}

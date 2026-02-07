@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "上海袋式除尘展",
+  "miniprogram_name": "袋式除尘展",
+  "request_mode": "single",
+  "url": "https://api.tonggao.info/api/visitor/exhibitor/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "appid": "tg8d8356723a5e427"
+  },
+  "params": {},
+  "data": {
+    "page": "#page",
+    "pageSize": "0"
+  },
+  "items_key": "data.datas",
+  "company_info_keys": {
+    "Company": "Company",
+    "BoothNumber": "StandNo",
+    "Contacts": "Contact",
+    "Phone": "ContactPhone",
+    "Email": "ContactEmail"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

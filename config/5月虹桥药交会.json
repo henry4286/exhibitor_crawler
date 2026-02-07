@@ -1,0 +1,42 @@
+{
+  "exhibition_code": "5月虹桥药交会",
+  "miniprogram_name": "立春网",
+  "request_mode": "double",
+  "url": "https://wx.larspring.com/api.php",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {
+    "m": "showarea.company_list"
+  },
+  "data": {
+    "pagesize": "10",
+    "page": "#page"
+  },
+  "items_key": "rst",
+  "company_info_keys": {
+    "Company": "companyName",
+    "BoothNumber": "boothNo",
+    "BoothArea": "boothArea",
+    "id": "id"
+  },
+  "url_detail": "https://wx.larspring.com/api.php",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params_detail": {
+    "m": "showarea.company_detail"
+  },
+  "data_detail": {
+    "id": "#id"
+  },
+  "items_key_detail": "rst",
+  "info_key": {
+    "Phone": "username",
+    "Contacts": "contacts",
+    "Email": "email",
+    "Telephone": "telephoneNumber"
+  }
+}

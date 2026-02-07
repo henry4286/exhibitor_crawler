@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "awe",
+  "miniprogram_name": "AWE在线 观众",
+  "request_mode": "single",
+  "url": "https://awegzapi.zhiandexpo.com/api/v1/audience/getExhAttendCompany",
+  "request_method": "GET",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "params": {
+    "page": "#page",
+    "size": "8",
+    "area_category_id": "174"
+  },
+  "data": {},
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "booth_number"
+  },
+  "url_detail": null,
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

@@ -1,0 +1,42 @@
+{
+  "exhibition_code": "高等教育博览会",
+  "miniprogram_name": "高等教育博览会666",
+  "request_mode": "single",
+  "url": "https://api.heexpochina.com/graphql",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "query": "\n        query($query:QueryExhibitorInput!){\n          exhibitorQuery{\n            queryCustom(query:$query){\n                hasNextPage\n                pageIndex\n                totalCount\n                items {\n                activities(num:3){\n                    id\n                    title\n                  }\n                  banner\n                  boothArea\n                  boothInfo\n                  businesses(num:3){\n                    id\n                    remark\n                    isSample\n                  }\n                  category\n                  company{\n                    id\n                    logo\n                    name\n                    region\n                    address\n                  }\n                  compId\n                  exhibitionId\n                  followCount\n                  id\n                  isPopularize\n                  isLiving\n                  likeCount\n                  lookCount\n                  proCount\n                  productNumber\n                  activityCount\n                  liveCount\n                  continuouNumber\n                  likes{\n                    userInfo\n                  }\n                  newestEvaluates{\n                    id\n                    content\n                  }\n                  products(num:10){\n                    id\n                    exhibitorId\n                    banner\n                    view3DUrl\n                  }\n                  shareCount\n                  talkCount\n                  thinkCount\n                  userCount\n                  viewCount\n                }\n              }\n            }\n        }\n",
+    "variables": {
+      "query": {
+        "exhibitionId": "de8987b2-c5a1-4260-a8b9-28dde7a6026c",
+        "page": "#page",
+        "size": 10,
+        "categories": [],
+        "country": "",
+        "province": "",
+        "city": "",
+        "county": "",
+        "compName": "",
+        "boothInfo": "",
+        "boothHall": "",
+        "text": ""
+      }
+    }
+  },
+  "items_key": "data.exhibitorQuery.queryCustom.items",
+  "company_info_keys": {
+    "Company": "company.name",
+    "BoothNumber": "boothInfo"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

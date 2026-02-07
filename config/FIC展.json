@@ -1,0 +1,31 @@
+{
+  "exhibition_code": "FIC展",
+  "miniprogram_name": "FIC展",
+  "request_mode": "single",
+  "url": "https://ficxcx.cfaa.cn/xcx/company/companyFilter",
+  "request_method": "GET",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {
+    "CommonFormMap.kw": "",
+    "CommonFormMap.hid": "",
+    "CommonFormMap.byname": "1",
+    "CommonFormMap.bycode": "0",
+    "CommonFormMap.page": "#page",
+    "CommonFormMap.range": "10"
+  },
+  "data": {},
+  "items_key": null,
+  "company_info_keys": {
+    "Company": "company_name_cn",
+    "BoothNumber": "position_code"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

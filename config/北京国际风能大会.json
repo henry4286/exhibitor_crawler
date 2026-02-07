@@ -1,0 +1,36 @@
+{
+  "exhibition_code": "北京国际风能大会",
+  "miniprogram_name": "北京国际风能大会",
+  "request_mode": "double",
+  "url": "https://www.chinawind.org.cn/xcx/zhanshangcx",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {},
+  "data": {
+    "keyword": ""
+  },
+  "items_key": null,
+  "company_info_keys": {
+    "ID": "id",
+    "Company": "name"
+  },
+  "url_detail": "https://www.chinawind.org.cn/xcx/zhanshang",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params_detail": {},
+  "data_detail": {
+    "id": "#id",
+    "phone": ""
+  },
+  "items_key_detail": null,
+  "info_key": {
+    "Company": "name",
+    "BoothNumber": "zwh",
+    "Telephone": "lxdh",
+    "Email": "lxyx"
+  }
+}

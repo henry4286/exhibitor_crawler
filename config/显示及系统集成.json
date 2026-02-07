@@ -1,0 +1,25 @@
+{
+  "exhibition_code": "显示及系统集成",
+  "miniprogram_name": "ISLE国际智慧显示及系统集成展",
+  "request_mode": "single",
+  "url": "https://ieas.84tech.cn/web/exhibitor-list/list",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "page": "#page",
+    "page_size": "2000"
+  },
+  "data": {},
+  "items_key": "data.items",
+  "company_info_keys": {
+    "Company": "company_name",
+    "BoothNumber": "booth_name"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

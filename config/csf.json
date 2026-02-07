@@ -1,0 +1,24 @@
+{
+  "exhibition_code": "csf",
+  "miniprogram_name": "csf",
+  "request_mode": "single",
+  "url": "https://www.chinastationeryfair.com/api/exhibitor/getExhibitorList",
+  "request_method": "POST",
+  "headers": {},
+  "params": {
+    "page": "#page",
+    "limit": 10
+  },
+  "data": {},
+  "items_key": "data.data",
+  "company_info_keys": {
+    "company_name": "company_name"
+  },
+  "url_detail": null,
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

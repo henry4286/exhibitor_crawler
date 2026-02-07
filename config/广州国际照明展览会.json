@@ -1,0 +1,27 @@
+{
+  "exhibition_code": "广州国际照明展览会",
+  "miniprogram_name": "广州国际照片展览会1",
+  "request_mode": "single",
+  "url": "https://b.gymf.com.cn/sign/getExhibitor",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "exhibit_id": 79
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "name",
+    "Email": "email",
+    "BoothNumber": "hall_name"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

@@ -1,0 +1,34 @@
+{
+  "exhibition_code": "深圳跨境展往届",
+  "miniprogram_name": "深圳跨境展",
+  "request_mode": "double",
+  "url": "https://api.cmhzyun.com/ec/public/api/exhibitor/getAll",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "page": "#page",
+    "size": 20,
+    "isHistory": "true"
+  },
+  "data": {},
+  "items_key": "data.content",
+  "company_info_keys": {
+    "id": "id",
+    "Company": "name"
+  },
+  "url_detail": "https://api.cmhzyun.com/ec/public/api/exhibitor/getDetail",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "id": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "data",
+  "info_key": {
+    "Contacts": "contactPerson",
+    "Job": "jobTitle",
+    "Phone": "mobile",
+    "Email": "contactEmail",
+    "BoothNumber": "exhibitionAreaBoothNumber"
+  }
+}

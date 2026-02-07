@@ -1,0 +1,37 @@
+{
+  "exhibition_code": "励展通2025铝工业",
+  "miniprogram_name": "励展通铝工业",
+  "request_mode": "double",
+  "url": "https://directory.reedexhibitions.com.cn/api/v5/companyProfiles/listPage",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {
+    "pageNo": "#page",
+    "pageSize": "30",
+    "eventCode": "CNH"
+  },
+  "data": {
+    "companyProfileName": "",
+    "divisions": "[]",
+    "meals": "[]",
+    "categorys": "[]",
+    "eventEditionIds": "eve-dfd8f076-c397-416d-8338-6cda27c4ba17",
+    "orderBy": "0"
+  },
+  "items_key": "resultList.rows",
+  "company_info_keys": {
+    "Company": "name",
+    "id": "id"
+  },
+  "url_detail": "https://directory.reedexhibitions.com.cn/api/v4/getExhibitorDetail",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "companyProfileId": "#company_id"
+  },
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

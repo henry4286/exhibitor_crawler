@@ -1,0 +1,60 @@
+{
+  "exhibition_code": "CAC展览会",
+  "miniprogram_name": "CAC展览会",
+  "request_mode": "double",
+  "url": "https://izt.eastfair.cn/visitor/v2/exhibitor/browse/all/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEauNZX0d+kumsSmSt4l9xSxeedaEYDOOz1woSLWt3EtwhGLHBfB9z/XpquNNTrJcaNby5FjBnHbxTlzXAgN/Cbyuq+d2WZwaDwel3aHViKx16qnZc07YP8gnM6nAleASJD+bFWmytSDOqKiYTvY2qIrnQKepTH7hWxyLWLhGAZDlardWayiRLwpSzMElvbS2mOt/sBMY1gvdOv9c3TuIDacZYCs78lWlJov0QcOXrsr8Gboaq/r0ETegkJXQKyT/e3rl6ixNijVXN9EHbX5wX0EGdPEvk5sC18mxAZthFR/VskST6+9h4qoxx9f4Xm5nvYFKMKml/xXaC82Cso52aK8YBf71fXd7BzmjhN3G4iEA6hQqhufL7Qre4Oxz9yh+/xTSPiZXjA/2/F/nB50uZ3SJE52YLdwa3M5ZMN23MYz4yS/s86IOkG373tHMZjpGNgvMjvBG4cbjsTnnYiwkOQNgW6AwxuLZm+vVv1EHtVvm+7bWeHcwX1T12jdKB3/++iWlNmY1/x5X6yWHQM6KeD34YYyqY8m1k2TdSq0vtXeZQ"
+  },
+  "params": {},
+  "data": {
+    "languageType": "cn",
+    "exhibitionId": "b33d8960b7a245cb97146670283ac360",
+    "appId": "7e46f33c139246069a3c17c9f4847a25",
+    "terminal": "wechat",
+    "miniAppid": "wxe7d2cd08cb5bf82b",
+    "token": "PBB+hfqyCn5u/Asp+KqEaro7AhH4z/+bW0+9qxZHTV3GqTTtK0xlBOZ/bJUKrMMzpQGrxvbaa1O+XC9IM1Esf+sq+GwKEVbFVC5oHf4ckhDvF0COJwODWI/otfPxmvDr8/lzo80KxYaPNqn7kEkK/5d3CRmNDUlQBGo9iBXFyJm9IcXhTs3UJ3PSx/3pyao67h18E1SncYIPukUmWlVAsHzhxLGBP9tOeJdS6oZ4RYKXIeoSHtEZefeF/0Ne5PpFdZjPGeTCeSLhi0QVNZ+70jSDR0ZiOfQJ5NTNtnT9EOJMGGPZkoevYDS/Wd1LcvI5xPT8hle8hE3TgEdYGc2Z+P4TQ3pEta1RRke+boQK/qNYu1LJkzJtNYIDRsf1bshJFAf5AxjrLvNiDx1pKcwNfgT1w5M/Dvv5yMKwTbI5yGQ=",
+    "subjectType": "VISITOR",
+    "pageNum": "#page",
+    "pageRows": 20,
+    "questionList": [],
+    "exhibitorSort": "recommend_custom_letter_asc",
+    "showType": "ACTOR_LIST",
+    "tagIds": "",
+    "sourceType": 2
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "name",
+    "ID": "id"
+  },
+  "url_detail": "https://izt.eastfair.cn/visitor/v2/exhibitor/visitor/exhibitorDetails",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/json",
+    "Authorization": "PBB+hfqyCn5u/Asp+KqEauNZX0d+kumsSmSt4l9xSxeedaEYDOOz1woSLWt3EtwhGLHBfB9z/XpquNNTrJcaNby5FjBnHbxTlzXAgN/Cbyuq+d2WZwaDwel3aHViKx16qnZc07YP8gnM6nAleASJD+bFWmytSDOqKiYTvY2qIrnQKepTH7hWxyLWLhGAZDlardWayiRLwpSzMElvbS2mOt/sBMY1gvdOv9c3TuIDacZYCs78lWlJov0QcOXrsr8Gboaq/r0ETegkJXQKyT/e3rl6ixNijVXN9EHbX5wX0EGdPEvk5sC18mxAZthFR/VskST6+9h4qoxx9f4Xm5nvYFKMKml/xXaC82Cso52aK8YBf71fXd7BzmjhN3G4iEA6hQqhufL7Qre4Oxz9yh+/xTSPiZXjA/2/F/nB50uZ3SJE52YLdwa3M5ZMN23MYz4yS/s86IOkG373tHMZjpGNgvMjvBG4cbjsTnnYiwkOQNgW6AwxuLZm+vVv1EHtVvm+7bWeHcwX1T12jdKB3/++iWlNmY1/x5X6yWHQM6KeD34YYyqY8m1k2TdSq0vtXeZQ"
+  },
+  "params_detail": {},
+  "data_detail": {
+    "languageType": "cn",
+    "exhibitionId": "b33d8960b7a245cb97146670283ac360",
+    "appId": "7e46f33c139246069a3c17c9f4847a25",
+    "terminal": "wechat",
+    "subjectType": "VISITOR",
+    "yudengji": "true",
+    "showType": "ACTOR_DETAILS",
+    "id": "#ID"
+  },
+  "items_key_detail": "data",
+  "info_key": {
+    "Email": "email",
+    "Contacts": "linkName",
+    "Phone": "linkMobile",
+    "BoothNumber": "exhibitionBoothNumber",
+    "WebSite": "webUrl",
+    "Telephone": "telephone",
+    "Job": "linkEmail"
+  }
+}

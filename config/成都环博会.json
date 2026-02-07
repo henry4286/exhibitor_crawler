@@ -1,0 +1,33 @@
+{
+  "exhibition_code": "成都环博会",
+  "miniprogram_name": "成都环保博览会",
+  "request_mode": "double",
+  "url": "https://online.cdepe.com/zh-cn/como_api/institutions/get_list",
+  "request_method": "GET",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "params": {
+    "page": "#page"
+  },
+  "data": {},
+  "items_key": "data.rows",
+  "company_info_keys": {
+    "id": "id.value",
+    "Company": "title.value"
+  },
+  "url_detail": "https://online.cdepe.com/zh-cn/como_api/institutions/get_detail",
+  "request_method_detail": "GET",
+  "headers_detail": {
+    "content-type": "application/json"
+  },
+  "params_detail": {
+    "id": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "data.body_content.basic_info",
+  "info_key": {
+    "Telephone": "value.4.value",
+    "Email": "value.6.value"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "百货汇",
+  "miniprogram_name": "CDATF百货汇",
+  "request_mode": "single",
+  "url": "https://api.cdatf.com/api-miniapp/company/list",
+  "request_method": "GET",
+  "headers": {
+    "content-type": "application/x-www-form-urlencoded",
+    "token": "eyJhbGciOiJIUzUxMiJ9.eyJuYW1lIjoi5YiY6Ieq5by6IiwiaWQiOiIxNzcyOTEyOTE2ODc3MTExMjk3IiwiYWNjb3VudCI6IjEzNDgyNDAwMzc3IiwidHlwZSI6ImJ1eWVyIiwibGFzdE1vZGlmeVBhc3N3b3JkVGltZSI6IiIsIlJFRlJFU0hfVE9LRV9FWFBJUkFUSU9OIjoxNzczMDM0MTU4MTk1LCJzdWIiOiIxMzQ4MjQwMDM3NyIsImlhdCI6MTc3MDQ0MjE1OCwiZXhwIjoxNzcxMDQ2OTU4fQ.dSGS_Q6y4QJ94TI1uPyu8gBAw1hMWRordoyd3t4j1OqCBoHAgtR9jY_SMgTNWykgtStRT7PewywKy9_pJ92SuQ"
+  },
+  "params": {
+    "pageNum": "#page",
+    "pageSize": "21"
+  },
+  "data": {},
+  "items_key": "content.records",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "boothNum"
+  },
+  "url_detail": null,
+  "request_method_detail": null,
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

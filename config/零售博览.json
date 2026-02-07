@@ -1,0 +1,27 @@
+{
+  "exhibition_code": "零售博览",
+  "miniprogram_name": "零售博览",
+  "request_mode": "single",
+  "url": "https://lingshou-mini-api.myhuiyi.com/API/V1/Exhibitors/default.aspx",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "user": "officialWebsite",
+    "password": "VEFFbCCAPcApCsuKAjNgD1gS5YENnxBc",
+    "page": "#page",
+    "num": "12"
+  },
+  "data": {},
+  "items_key": "Exhibitors",
+  "company_info_keys": {
+    "Company": "Name",
+    "BoothNumber": "BoothNo"
+  },
+  "url_detail": null,
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": null,
+  "info_key": {}
+}

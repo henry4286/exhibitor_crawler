@@ -1,0 +1,36 @@
+{
+  "exhibition_code": "3D打印(深圳福田)",
+  "miniprogram_name": "tct sz+",
+  "request_mode": "single",
+  "url": "https://tct.expo-ai.net/wechatservice/exhibitor/getExbibitorsDirectories",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "keyCode": "$2a$10$jc4MhbLwKDFZw5ZdcNztwuKEroTloXsmiFb9vpTdeTQHoqUIGvFR.",
+    "keyword": "",
+    "tagId": "0",
+    "indurstryId": "0",
+    "categoryIds": "",
+    "exhibitionAreas": "",
+    "pageNumber": "#page",
+    "pageSize": "8",
+    "orderBy": "1",
+    "sortOrder": "1",
+    "customerKey": "sial"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "boothNumber": "boothNumber",
+    "Company": "company",
+    "Phone": "mobile",
+    "Email": "email"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

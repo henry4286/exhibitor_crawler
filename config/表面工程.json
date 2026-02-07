@@ -1,0 +1,29 @@
+{
+  "exhibition_code": "表面工程",
+  "miniprogram_name": "ProSF国际表面工程展",
+  "request_mode": "single",
+  "url": "https://prosf2025.expotec-group.com/api.php",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "p": "/cms/exapi/page/#page/num/20",
+    "appid": "1"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "exhname",
+    "BoothNumber": "ext_zhanweihao",
+    "Contacts": "ext_lianxiren",
+    "Phone": "ext_shoujihaoma",
+    "BoothArea": "ext_areas",
+    "Email": "ext_email"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

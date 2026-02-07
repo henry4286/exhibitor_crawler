@@ -1,0 +1,39 @@
+{
+  "exhibition_code": "家纺展",
+  "miniprogram_name": "ITSH家纺展",
+  "request_mode": "double",
+  "url": "https://itsh.indata3.com//api.php",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params": {
+    "m": "showarea.company_list"
+  },
+  "data": {
+    "page": "#page",
+    "pagesize": "10"
+  },
+  "items_key": "rst",
+  "company_info_keys": {
+    "Company": "companyName",
+    "id": "id",
+    "BoothNumber": "boothNo"
+  },
+  "url_detail": "https://itsh.indata3.com//api.php",
+  "request_method_detail": "POST",
+  "headers_detail": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "params_detail": {
+    "m": "showarea.company_detail"
+  },
+  "data_detail": {
+    "id": "#id"
+  },
+  "items_key_detail": "rst",
+  "info_key": {
+    "Telephone": "telephoneNumber",
+    "Email": "email"
+  }
+}

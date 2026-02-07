@@ -1,0 +1,28 @@
+{
+  "exhibition_code": "CBME",
+  "miniprogram_name": "CBME云采宝",
+  "request_mode": "single",
+  "url": "https://cbmeonline.com/api/supply/list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Authorization": "eyJhbGciOiJIUzUxMiJ9.eyJtbTpjYm1lOmxvZ2luX3VzZXJfa2V5IjoibWVtYmVyOjI1OTQyNSJ9.6AzyiCwLgKZlpKSBulSO-vT-Eb4Jl4b60YWDrC7Q23kxAWtU2Ymrk-fHXnBDgt_YX8NVdxweQfzQC-gR33an9A"
+  },
+  "params": {},
+  "data": {
+    "pageNum": "#page",
+    "pageSize": "10"
+  },
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "name",
+    "BoothNumber": "boothCode"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}

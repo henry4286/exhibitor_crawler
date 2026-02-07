@@ -1,0 +1,30 @@
+{
+  "exhibition_code": "3D打印(上海虹桥)",
+  "miniprogram_name": "tct asia+",
+  "request_mode": "double",
+  "url": "https://online.tctasia.cn/zh-cn/como_api/institutions/get_list",
+  "request_method": "GET",
+  "headers": {},
+  "params": {
+    "page": "#page"
+  },
+  "data": {},
+  "items_key": "data.rows",
+  "company_info_keys": {
+    "Company": "title.value",
+    "BoothNumber": "subTitleBefore.value.0.value",
+    "id": "id.value"
+  },
+  "url_detail": "https://online.tctasia.cn/zh-cn/como_api/institutions/get_detail",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "id": "#id"
+  },
+  "data_detail": {},
+  "items_key_detail": "data.body_content.basic_info",
+  "info_key": {
+    "Telephone": "value.4.value",
+    "Email": "value.6.value"
+  }
+}

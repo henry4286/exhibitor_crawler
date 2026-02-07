@@ -11,6 +11,8 @@ import threading
 import datetime
 import os
 import sys
+import tempfile
+import time
 
 # 导入日志系统
 from unified_logger import get_logger
@@ -50,6 +52,7 @@ class RunConfigTab:
         self.log_text = None  # 先初始化为None，在create_tab中赋值
         self._stop_requested = False  # 停止请求标志
         self._output_thread = None  # 输出读取线程
+        self._stop_file = None  # 停止文件路径
         self.create_tab()
         
         # 创建日志显示后，初始化日志系统的UI回调
@@ -65,7 +68,7 @@ class RunConfigTab:
         
         # 当前展会代码显示
         current_frame = ttk.LabelFrame(run_frame, text="当前选中展会", padding="10")
-        current_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        current_frame.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
         
         ttk.Label(current_frame, text="展会代码:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
         self.current_exhibition_label = ttk.Label(current_frame, text="未选择", font=('Arial', 10, 'bold'))
@@ -77,7 +80,7 @@ class RunConfigTab:
         
         # 运行参数配置
         params_frame = ttk.LabelFrame(run_frame, text="运行参数", padding="10")
-        params_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        params_frame.grid(row=1, column=0, columnspan=2, sticky="we", padx=10, pady=10)
         
         # 线程数配置
         ttk.Label(params_frame, text="并发线程数:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
@@ -105,13 +108,13 @@ class RunConfigTab:
         
         # 运行日志
         log_frame = ttk.LabelFrame(run_frame, text="运行日志", padding="10")
-        log_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=10, pady=10)
+        log_frame.grid(row=3, column=0, columnspan=2, sticky="wens", padx=10, pady=10)
         run_frame.columnconfigure(0, weight=1)
         run_frame.rowconfigure(3, weight=1)
         
         # 日志文本框
         self.log_text = scrolledtext.ScrolledText(log_frame, width=80, height=20)
-        self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.log_text.grid(row=0, column=0, sticky="wens")
         
         # 清空日志按钮
         ttk.Button(log_frame, text="清空日志", command=self.clear_log).grid(row=1, column=0, pady=(5, 0))
@@ -148,18 +151,28 @@ class RunConfigTab:
     
     def _init_logger_ui_callback(self):
         """初始化日志系统的UI回调，将日志输出到UI窗口"""
-        def log_callback(message: str):
-            """日志回调函数"""
+        def _append_to_text(message: str):
+            # 在UI主线程中安全地更新日志文本框
             try:
                 if self.log_text and self.log_text.winfo_exists():
                     self.log_text.insert('end', f"{message}\n")
-                    self.log_text.see('end')  # 自动滚动到底部
-                    self.config_editor.root.update_idletasks()  # 实时更新UI
-            except tk.TclError:
-                # UI控件已被销毁，静默忽略
+                    self.log_text.see('end')
+            except Exception:
+                # 忽略UI更新错误（例如控件已销毁）
                 pass
-        
-        # 重新初始化日志系统，传入UI回调
+
+        def log_callback(message: str):
+            # 将实际的UI更新调度到主线程，避免在日志线程直接操作Tk控件
+            try:
+                if hasattr(self.config_editor, 'root') and getattr(self.config_editor.root, 'after', None):
+                    self.config_editor.root.after(0, lambda: _append_to_text(message))
+                else:
+                    # 兜底：如果无法使用 after，则直接尝试写入（尽量避免）
+                    _append_to_text(message)
+            except Exception:
+                pass
+
+        # 重新初始化日志系统，传入UI回调（线程安全）
         get_logger(ui_log_callback=log_callback)
     
     def update_current_exhibition(self):
@@ -272,6 +285,12 @@ class RunConfigTab:
                 if platform.system() == 'Windows':
                     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
                 
+                # 为子进程传入一个可用于协作中断的停止文件路径
+                _stop_file_path = os.path.join(tempfile.gettempdir(), f"exhibitor_stop_{exhibition_code}_{int(time.time()*1000)}")
+                
+                # 保存到实例，在停止时创建该文件以通知子进程
+                self._stop_file = _stop_file_path
+                
                 self.current_process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -281,7 +300,7 @@ class RunConfigTab:
                     universal_newlines=True,
                     encoding='utf-8',
                     errors='replace',
-                    env=dict(os.environ, PYTHONIOENCODING='utf-8'),
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8', EXH_CRAWLER_STOP_FILE=_stop_file_path),
                     creationflags=creationflags
                 )
                 

@@ -1,0 +1,32 @@
+{
+  "exhibition_code": "养老在线",
+  "miniprogram_name": "SIC养老在线",
+  "request_mode": "single",
+  "url": "https://www.silverindustry.cn/wxapi/exh_list",
+  "request_method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "params": {},
+  "data": {
+    "openid": "olFer5aHiq-jhAFN1_1UYh96s0c0",
+    "cate": 0,
+    "page": "#page"
+  },
+  "items_key": "data.list",
+  "company_info_keys": {
+    "Company": "company_cn",
+    "BoothNumber": "venues",
+    "Contacts": "truename",
+    "Email": "email",
+    "Phone": "mobile",
+    "Telephone": "phone"
+  },
+  "url_detail": "",
+  "request_method_detail": "POST",
+  "headers_detail": {},
+  "params_detail": {},
+  "data_detail": {},
+  "items_key_detail": "",
+  "info_key": {}
+}
