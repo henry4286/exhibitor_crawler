@@ -30,5 +30,7 @@
   "info_key": {
     "Contacts": "user.nickname",
     "Phone": "user.phone"
-  }
+  },
+  "city": "",
+  "month": ""
 }

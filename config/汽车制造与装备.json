@@ -33,5 +33,7 @@
     "Email": "companyEmail",
     "Telephone": "telephone",
     "BoothNumber": "booth.0"
-  }
+  },
+  "city": "",
+  "month": ""
 }

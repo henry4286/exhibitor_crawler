@@ -1,5 +1,5 @@
 {
-  "total_configs": 82,
+  "total_configs": 84,
   "config_files": [
     "27届亚宠展.json",
     "3D打印(上海虹桥).json",
@@ -78,11 +78,13 @@
     "虹桥酒店餐饮展.json",
     "表面工程.json",
     "过滤与分离工业展览会.json",
+    "酒店及商业空间展.json",
+    "酒店及商业空间展_卡片.json",
     "铁路技术装备展.json",
     "零售博览.json",
     "风米网.json",
     "食品.json",
     "高等教育博览会.json"
   ],
-  "last_updated": "2026-02-07T15:23:56.915889"
+  "last_updated": "2026-02-07T16:46:51.183618"
 }

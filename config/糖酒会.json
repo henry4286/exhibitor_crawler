@@ -54,5 +54,7 @@
     "Phone": "linkMobile",
     "Contacts": "linkName",
     "Telephone": "telephone"
-  }
+  },
+  "city": "",
+  "month": ""
 }

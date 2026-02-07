@@ -1,6 +1,8 @@
 {
   "exhibition_code": "27届亚宠展",
   "miniprogram_name": "亚宠观展小助手",
+  "city": "上海",
+  "month": "8月",
   "request_mode": "single",
   "url": "https://online.petfairasia.com/zh-cn/como_api/institutions/get_list",
   "request_method": "GET",

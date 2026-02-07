@@ -1,6 +1,8 @@
 {
   "exhibition_code": "3D打印(上海虹桥)",
   "miniprogram_name": "tct asia+",
+  "city": "上海",
+  "month": "3月",
   "request_mode": "double",
   "url": "https://online.tctasia.cn/zh-cn/como_api/institutions/get_list",
   "request_method": "GET",

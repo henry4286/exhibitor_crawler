@@ -27,5 +27,7 @@
     "Contacts": "linkman",
     "Phone": "phone",
     "Email": "email"
-  }
+  },
+  "city": "",
+  "month": ""
 }

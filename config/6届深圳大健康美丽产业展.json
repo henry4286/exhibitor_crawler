@@ -34,5 +34,7 @@
     "Company": "fullUser",
     "BoothNumber": "hallBoothNumber",
     "BoothArea": "exhibitArea"
-  }
+  },
+  "city": "",
+  "month": ""
 }

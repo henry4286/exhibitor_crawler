@@ -34,5 +34,7 @@
   "info_key": {
     "Telephone": "Tel",
     "Email": "Email"
-  }
+  },
+  "city": "",
+  "month": ""
 }

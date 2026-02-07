@@ -24,5 +24,7 @@
   "info_key": {
     "BoothNumber": "positionNumber",
     "Telephone": "phone"
-  }
+  },
+  "city": "",
+  "month": ""
 }

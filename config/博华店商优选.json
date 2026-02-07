@@ -6,8 +6,8 @@
   "request_method": "POST",
   "headers": {
     "Content-Type": "application/json",
-    "timestamp": "1769074272",
-    "token": "80cc5556452c19bcf0e162fff3b3d996"
+    "timestamp": "1770450231",
+    "token": "6a000743132c8779e5dc8e52c069534d"
   },
   "params": {},
   "data": {
@@ -26,5 +26,7 @@
   "params_detail": {},
   "data_detail": {},
   "items_key_detail": null,
-  "info_key": {}
+  "info_key": {},
+  "city": "",
+  "month": ""
 }

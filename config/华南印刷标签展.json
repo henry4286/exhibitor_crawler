@@ -30,5 +30,7 @@
   "info_key": {
     "Contacts": "linkman",
     "Phone": "phone"
-  }
+  },
+  "city": "",
+  "month": ""
 }

@@ -29,5 +29,7 @@
   "info_key": {
     "Telephone": "value.4.value",
     "Email": "value.6.value"
-  }
+  },
+  "city": "",
+  "month": ""
 }

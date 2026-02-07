@@ -30,5 +30,7 @@
     "Phone": "mobile",
     "Email": "contactEmail",
     "BoothNumber": "exhibitionAreaBoothNumber"
-  }
+  },
+  "city": "",
+  "month": ""
 }

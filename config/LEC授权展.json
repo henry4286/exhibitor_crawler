@@ -31,5 +31,7 @@
   "items_key_detail": "data",
   "info_key": {
     "BoothNumber": "boothCode"
-  }
+  },
+  "city": "",
+  "month": ""
 }

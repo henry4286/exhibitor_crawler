@@ -22,5 +22,7 @@
   "params_detail": {},
   "data_detail": {},
   "items_key_detail": null,
-  "info_key": {}
+  "info_key": {},
+  "city": "",
+  "month": ""
 }

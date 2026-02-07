@@ -56,5 +56,7 @@
     "WebSite": "webUrl",
     "Telephone": "telephone",
     "Job": "linkEmail"
-  }
+  },
+  "city": "",
+  "month": ""
 }

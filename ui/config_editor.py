@@ -177,7 +177,7 @@ class ConfigUIEditor:
         self.notebook.grid(row=0, column=0, sticky="wens")
         
         # 创建各个标签页
-        self.basic_tab = BasicConfigTab(self.notebook)
+        self.basic_tab = BasicConfigTab(self.notebook, self.config_dir)
         self.advanced_tab = AdvancedConfigTab(self.notebook)
         self.run_tab = RunConfigTab(self.notebook, self)
         
@@ -337,11 +337,11 @@ class ConfigUIEditor:
                 values = widget.cget('values')
                 value_str = str(value).strip() if value else ''
                 
-                if value_str and value_str in values:
+                if value_str:
+                    # 如果有值，直接设置（即使是手动输入的值）
                     widget.set(value_str)
-                elif values:
-                    widget.set(values[0])
                 else:
+                    # 值为空时，清空显示
                     widget.set('')
             elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):  # Entry widget
                 widget.delete(0, tk.END)
@@ -618,6 +618,9 @@ class ConfigUIEditor:
                 index = self.filtered_files.index(filename)
                 self.listbox.selection_set(index)
                 self.on_list_select(None)
+            
+            # 刷新城市和月份下拉列表
+            self.basic_tab.refresh_city_month_values()
             
             action = "修改" if old_filename else "新增"
             self.show_info(f"已{action}展会 '{exhibition_code}' 的配置")

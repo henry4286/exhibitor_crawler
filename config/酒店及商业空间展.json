@@ -1,0 +1,40 @@
+{
+  "exhibition_code": "酒店及商业空间展",
+  "miniprogram_name": "酒店及商业空间展",
+  "city": "上海",
+  "month": "3月",
+  "request_mode": "double",
+  "url": "https://hspmini.jiagle.com/api/exhibition_list",
+  "request_method": "GET",
+  "headers": {
+    "Content-Type": "application/json",
+    "keywords": ""
+  },
+  "params": {
+    "page": "#page",
+    "hall": "E",
+    "time": "1770452913000"
+  },
+  "data": {},
+  "items_key": "data",
+  "company_info_keys": {
+    "Company": "company_cn",
+    "id": "exhibitor_id",
+    "BoothNumber": "booth"
+  },
+  "url_detail": "https://hspmini.jiagle.com/api/exhibition_detail",
+  "request_method_detail": "GET",
+  "headers_detail": {},
+  "params_detail": {
+    "e_id": "#id",
+    "token": "f86a4a24732335818cbb1fa1d55dae3f"
+  },
+  "data_detail": {},
+  "items_key_detail": "data.data.managers",
+  "info_key": {
+    "Phone": "telephone",
+    "Contacts": "contactor_name",
+    "email": "email",
+    "Job": "contactor_position"
+  }
+}
